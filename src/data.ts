@@ -13,6 +13,7 @@ import {
   Sliders,
   UserCog,
   LucideIcon,
+  Sparkles,
 } from "lucide-react";
 
 export type NavItem = {
@@ -24,14 +25,14 @@ export type NavItem = {
 };
 
 export const navItems: NavItem[] = [
-  { id: "marketing", label: "بازاریابی", icon: Users, locked: true },
+  { id: "marketing", label: "دسترسی سریع", icon: Sparkles },
   { id: "sales", label: "فروش", icon: TrendingUp },
-  { id: "install", label: "نصب و راه اندازی", icon: Boxes, locked: true },
+  { id: "install", label: "نصب و راه اندازی", icon: Boxes },
   { id: "service", label: "سرویس و نگهداری", icon: CalendarCheck },
   { id: "servicenegar", label: "سرویس نگار", icon: PenSquare, badge: true },
   { id: "cartable", label: "کارتابل", icon: FolderKanban },
   { id: "file", label: "پرونده", icon: Network },
-  { id: "store", label: "انبار", icon: Archive, locked: true },
+  { id: "store", label: "انبار", icon: Archive },
   { id: "buy", label: "خرید", icon: DollarSign, locked: true },
   { id: "suppliers", label: "تامین کنندگان", icon: Truck, locked: true },
   { id: "visit", label: "بازدید", icon: ImageIcon, locked: true },
@@ -40,6 +41,24 @@ export const navItems: NavItem[] = [
 ];
 
 export type MenuGroup = { title: string; items: string[] };
+
+export const salesMenu: MenuGroup[] = [
+  {
+    title: "مشتریان و سرنخ‌ها",
+    items: ["سرنخ‌های فروش", "پیش‌فاکتورها", "فاکتورهای فروش", "پیگیری‌های تلفنی"],
+  },
+  {
+    title: "گزارشات فروش",
+    items: ["گزارش فروش ماهانه", "تحلیل مشتریان بالقوه"],
+  },
+];
+
+export const cartableMenu: MenuGroup[] = [
+  {
+    title: "وظایف و پیگیری‌ها",
+    items: ["یادداشت‌های روزانه", "وظایف محوله", "درخواست‌های مرخصی", "پیام‌های دریافتی"],
+  },
+];
 
 export const serviceMenu: MenuGroup[] = [
   {
@@ -161,6 +180,27 @@ export type Customer = {
   sms: boolean;
   suspended?: boolean;
 };
+
+export type Part = {
+  id: number;
+  code: string;
+  name: string;
+  category: string;
+  unit: string;
+  stock: number;
+  price: number;
+};
+
+export const initialParts: Part[] = [
+  { id: 1, code: "PRT-101", name: "لنت ترمز الکو", category: "مکانیکال", unit: "جفت", stock: 14, price: 850000 },
+  { id: 2, code: "PRT-102", name: "سیم بکسل نمره 10 گوستاولف", category: "کشش", unit: "متر", stock: 120, price: 420000 },
+  { id: 3, code: "PRT-103", name: "روغن هیدرولیک بهران 68", category: "روانکاری", unit: "لیتر", stock: 45, price: 180000 },
+  { id: 4, code: "PRT-104", name: "میکروسوئیچ اشنایدر", category: "الکتریکال", unit: "عدد", stock: 30, price: 290000 },
+  { id: 5, code: "PRT-105", name: "کفشک راهنما کابین T9", category: "مکانیکال", unit: "عدد", stock: 24, price: 340000 },
+  { id: 6, code: "PRT-106", name: "دیکتاتور آسانسور اونو", category: "درب", unit: "عدد", stock: 18, price: 650000 },
+  { id: 7, code: "PRT-107", name: "شالتر پروانه‌ای", category: "الکتریکال", unit: "عدد", stock: 12, price: 410000 },
+  { id: 8, code: "PRT-108", name: "تراول کابل 24 رشته دت وایلر", category: "الکتریکال", unit: "متر", stock: 85, price: 950000 },
+];
 
 export const initialCustomers: Customer[] = [
   { id: 1, name: "* کردلو مجتمع صدرا", buildings: 1, active: true, sms: true },

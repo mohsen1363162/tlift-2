@@ -17,12 +17,16 @@ import {
   TerminalSquare,
   SquareArrowOutUpRight,
   LayoutGrid,
+  Star,
+  CheckCircle2,
 } from "lucide-react";
 import {
   navItems,
   serviceMenu,
   fileMenu,
   settingsMenu,
+  salesMenu,
+  cartableMenu,
   recentItems,
   MenuGroup,
   Contract,
@@ -36,7 +40,10 @@ import NewContractWizard from "./NewContractWizard";
 import ContractView from "./ContractView";
 import CustomerReportsPage from "./CustomerReportsPage";
 import CsvUploadPage from "./CsvUploadPage";
-import { useContracts, appStore } from "./store";
+import MarketingFlyout from "./components/MarketingFlyout";
+import ScheduleManagementPage from "./components/ScheduleManagementPage";
+import ZonesPage from "./components/ZonesPage";
+import { useContracts, useMarketingItems, appStore } from "./store";
 
 type Tab = {
   id: number;
@@ -52,7 +59,9 @@ type Tab = {
     | "parts"
     | "debtorReport"
     | "customerReport"
-    | "csvUpload";
+    | "csvUpload"
+    | "schedule"
+    | "zones";
   contract?: Contract;
   csvType?: "contracts" | "customers";
 };
@@ -63,6 +72,8 @@ const menus: Record<string, MenuGroup[]> = {
   service: serviceMenu,
   file: fileMenu,
   settings: settingsMenu,
+  sales: salesMenu,
+  cartable: cartableMenu,
 };
 
 export default function App() {
@@ -71,7 +82,17 @@ export default function App() {
   const [tabs, setTabs] = useState<Tab[]>([{ id: 1, title: "تب جدید", kind: "home" }]);
   const [active, setActive] = useState(1);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
   const contracts = useContracts();
+  const marketingItems = useMarketingItems();
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => {
+      setToastMsg((cur) => (cur === msg ? null : cur));
+    }, 2800);
+  };
 
   const t = makeTheme(dark);
 
@@ -103,8 +124,17 @@ export default function App() {
     else if (label === "چاپ گزارش مشتریان بدهکار") addTab("چاپ گزارش مشتریان بدهکار", "debtorReport");
     else if (label === "چاپ گزارش مشتریان") addTab("چاپ گزارش مشتریان", "customerReport");
     else if (label === "قرارداد ها" || label === "قراردادها") addTab("قرارداد ها", "contracts");
+    else if (
+      label === "مدیریت زمانبندی سرویس ها و خرابی ها" ||
+      label.includes("مدیریت زمانبندی") ||
+      label.includes("زمانبندی سرویس") ||
+      label === "سرویس ها"
+    )
+      addTab("مدیریت زمانبندی سرویس ها و خرابی ها", "schedule");
     else if (label === "سرویسکار و مسئول انجام") addTab("سرویس کار و مسئول انجام", "staff");
     else if (label === "قطعات" || label === "قطعات مصرفی") addTab("قطعه ها", "parts");
+    else if (label === "منطقه" || label === "منطقه‌ها" || label === "منطقه ها" || label.includes("منطقه"))
+      addTab("منطقه ها", "zones");
     else if (label.includes("مشتریان") && label.includes("CSV")) addTab("آپلود CSV مشتریان", "csvUpload", undefined, "customers");
     else if (label.includes("قرارداد") && label.includes("CSV")) addTab("آپلود CSV قراردادها", "csvUpload", undefined, "contracts");
     else if (label === "آپلود فایلهای CSV" || label.toLowerCase().includes("csv")) addTab("آپلود فایلهای CSV", "csvUpload", undefined, "contracts");
@@ -217,30 +247,54 @@ export default function App() {
             {navItems.map((item) => {
               const Icon = item.icon;
               const on = openMenu === item.id;
+              const hasFlyout = item.id === "marketing" || !!menus[item.id];
               return (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => setOpenMenu(on ? null : item.id)}
-                  onMouseEnter={() => menus[item.id] && setOpenMenu(item.id)}
+                  onMouseEnter={() => hasFlyout && setOpenMenu(item.id)}
                   className={`relative flex flex-col items-center gap-1 border-b px-1 py-3 text-[10.5px] leading-4 ${
                     t.border
                   } ${on ? (dark ? "bg-white/10" : "bg-black/5") : ""} ${t.hover} ${t.text}`}
                 >
                   {item.locked && <Lock size={10} className="absolute end-1 top-1 text-amber-500" />}
                   {item.badge && <span className="absolute start-1 top-2 h-3 w-3 rounded-full bg-orange-500" />}
-                  <Icon size={19} className={t.sub} />
+                  {item.id === "marketing" && marketingItems.length > 0 && (
+                    <span className="absolute end-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-neutral-950">
+                      {marketingItems.length}
+                    </span>
+                  )}
+                  <Icon size={19} className={on ? "text-amber-400" : t.sub} />
                   <span className="text-center">{item.label}</span>
                 </button>
               );
             })}
           </div>
 
-          {/* Flyout */}
-          {openMenu && menus[openMenu] && (
+          {/* Marketing Flyout */}
+          {openMenu === "marketing" && (
             <div
               onMouseLeave={() => setOpenMenu(null)}
-              className={`absolute inset-y-0 right-[68px] z-30 flex w-[252px] flex-col border-e text-right ${
+              className={`absolute inset-y-0 right-[68px] z-30 flex w-[280px] flex-col border-e text-right ${
+                t.border
+              } ${t.chrome} shadow-[0_0_30px_rgba(0,0,0,.6)]`}
+            >
+              <MarketingFlyout
+                t={t}
+                dark={dark}
+                onOpenItem={openMenuItem}
+                onClose={() => setOpenMenu(null)}
+                onShowToast={showToast}
+              />
+            </div>
+          )}
+
+          {/* Standard Menu Flyout */}
+          {openMenu && openMenu !== "marketing" && menus[openMenu] && (
+            <div
+              onMouseLeave={() => setOpenMenu(null)}
+              className={`absolute inset-y-0 right-[68px] z-30 flex w-[265px] flex-col border-e text-right ${
                 t.border
               } ${t.chrome} shadow-[0_0_25px_rgba(0,0,0,.5)]`}
             >
@@ -254,19 +308,70 @@ export default function App() {
                     >
                       {g.title}
                     </div>
-                    {g.items.map((it) => (
-                      <button
-                        key={it}
-                        type="button"
-                        onClick={() => openMenuItem(it)}
-                        className={`flex w-full items-center justify-between gap-2 border-b px-3 py-2.5 text-[12px] ${
-                          t.border
-                        } ${t.hover} ${t.text}`}
-                      >
-                        <span className="text-right leading-5">{it}</span>
-                        <SquareArrowOutUpRight size={13} className={t.sub} />
-                      </button>
-                    ))}
+                    {g.items.map((it) => {
+                      const isPinned = marketingItems.some((m) => m.name === it);
+                      const currentMenuLabel =
+                        navItems.find((n) => n.id === openMenu)?.label || "سایر منوها";
+
+                      return (
+                        <div
+                          key={it}
+                          className={`group/menuitem flex w-full items-center justify-between gap-1.5 border-b px-2.5 py-2 text-[12px] transition ${
+                            t.border
+                          } ${t.hover} ${t.text}`}
+                        >
+                          {/* Item click to open page */}
+                          <button
+                            type="button"
+                            onClick={() => openMenuItem(it)}
+                            className="flex min-w-0 flex-1 items-center justify-between gap-2 text-right text-inherit"
+                          >
+                            <span className="truncate text-right leading-5">{it}</span>
+                            <SquareArrowOutUpRight
+                              size={12}
+                              className={`shrink-0 opacity-40 group-hover/menuitem:opacity-80 ${t.sub}`}
+                            />
+                          </button>
+
+                          {/* Small Toggle Icon for Marketing */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const added = appStore.toggleMarketingItem({
+                                name: it,
+                                section: currentMenuLabel,
+                                groupTitle: g.title,
+                              });
+                              showToast(
+                                added
+                                  ? `«${it}» به دسترسی سریع اضافه شد ⭐`
+                                  : `«${it}» از دسترسی سریع حذف شد`
+                              );
+                            }}
+                            title={
+                              isPinned
+                                ? "حذف از دسترسی سریع"
+                                : "افزودن به دسترسی سریع (روشن کردن)"
+                            }
+                            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded transition-all ${
+                              isPinned
+                                ? "bg-amber-500/25 text-amber-400 ring-1 ring-amber-400/50 hover:bg-amber-500/40"
+                                : "text-zinc-500 hover:bg-zinc-700/50 hover:text-amber-300 opacity-40 group-hover/menuitem:opacity-100"
+                            }`}
+                          >
+                            <Star
+                              size={13}
+                              className={
+                                isPinned
+                                  ? "fill-amber-400 text-amber-400"
+                                  : "transition-transform hover:scale-110"
+                              }
+                            />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 ))}
               </div>
@@ -278,7 +383,17 @@ export default function App() {
             className="flex min-w-0 flex-1 flex-col overflow-hidden"
             onClick={() => setOpenMenu(null)}
           >
-            {current?.kind === "customers" ? (
+            {current?.kind === "schedule" ? (
+              <ScheduleManagementPage
+                t={t}
+                onOpenContract={(no) => {
+                  const c = contracts.find((x) => x.no === no);
+                  if (c) openContractView(c);
+                  else addTab("قرارداد ها", "contracts");
+                }}
+                onShowToast={showToast}
+              />
+            ) : current?.kind === "customers" ? (
               <CustomersPage
                 t={t}
                 onOpenTab={(title) => addTab(title, "blank")}
@@ -304,6 +419,8 @@ export default function App() {
               <StaffPage t={t} />
             ) : current?.kind === "parts" ? (
               <PartsPage t={t} />
+            ) : current?.kind === "zones" ? (
+              <ZonesPage t={t} onShowToast={showToast} />
             ) : current?.kind === "csvUpload" ? (
               <CsvUploadPage
                 t={t}
@@ -397,6 +514,14 @@ export default function App() {
             </span>
           </div>
         </div>
+
+        {/* Floating Toast Notification */}
+        {toastMsg && (
+          <div className="pointer-events-none fixed bottom-12 start-12 z-50 flex items-center gap-2 rounded-lg border border-amber-400/40 bg-neutral-900/95 px-4 py-2.5 text-[12px] font-medium text-amber-200 shadow-2xl backdrop-blur-md transition-all animate-in fade-in slide-in-from-bottom-3 duration-200">
+            <CheckCircle2 size={16} className="text-amber-400 shrink-0" />
+            <span>{toastMsg}</span>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -154,9 +154,379 @@ function saveStorage<T>(key: string, data: T) {
 }
 
 // In-Memory Global State
+export type MarketingItem = {
+  id: string;
+  name: string;
+  section: string;
+  groupTitle?: string;
+  pinnedAt?: number;
+};
+
+const INITIAL_MARKETING_ITEMS: MarketingItem[] = [
+  { id: "service:قرارداد ها", name: "قرارداد ها", section: "سرویس و نگهداری", groupTitle: "گزارشات" },
+  { id: "file:لیست مشتریان", name: "لیست مشتریان", section: "پرونده", groupTitle: "مشتریان" },
+];
+
+export type ScheduledService = {
+  id: string;
+  date: string; // e.g. "1405-06-01"
+  buildingName: string;
+  status: "done" | "pending";
+  technician: string;
+  techCount: number;
+  zone: string;
+  contractNo: string;
+  customerName: string;
+  customerPhone?: string;
+  address?: string;
+  time?: string;
+  notes?: string;
+  partsRequested?: Array<{ id: string; name: string; qty: number; reason: string; date: string }>;
+  report?: string;
+  lastUpdated?: number;
+};
+
+export type ZoneItem = {
+  id: number;
+  name: string; // منطقه
+  city: string; // شهر
+  province: string; // استان
+};
+
+export const INITIAL_ZONES: ZoneItem[] = [
+  { id: 1, name: "عارف خرم", city: "قزوین", province: "قزوین" },
+  { id: 2, name: "عارف سپهر", city: "قزوین", province: "قزوین" },
+  { id: 3, name: "عارف متفرقه", city: "قزوین", province: "قزوین" },
+  { id: 4, name: "لوازم اصلی", city: "قزوین", province: "قزوین" },
+  { id: 5, name: "لوازم پارس شرقی", city: "قزوین", province: "قزوین" },
+  { id: 6, name: "غیاث آباد", city: "قزوین", province: "قزوین" },
+  { id: 7, name: "کوثر", city: "قزوین", province: "قزوین" },
+  { id: 8, name: "مینودر", city: "قزوین", province: "قزوین" },
+  { id: 9, name: "نوروزیان", city: "قزوین", province: "قزوین" },
+  { id: 10, name: "حکیم", city: "قزوین", province: "قزوین" },
+  { id: 11, name: "قائم", city: "قزوین", province: "قزوین" },
+  { id: 12, name: "ملاصدرا غربی", city: "قزوین", province: "قزوین" },
+  { id: 13, name: "پونک", city: "قزوین", province: "قزوین" },
+  { id: 14, name: "ملاصدرا شرقی", city: "قزوین", province: "قزوین" },
+  { id: 15, name: "دانشگاه", city: "قزوین", province: "قزوین" },
+  { id: 16, name: "پادگان بلوار توحید", city: "قزوین", province: "قزوین" },
+  { id: 17, name: "جانبازان", city: "قزوین", province: "قزوین" },
+  { id: 18, name: "مرکز شهر", city: "قزوین", province: "قزوین" },
+  { id: 19, name: "راه آهن", city: "قزوین", province: "قزوین" },
+  { id: 20, name: "تهران قدیم", city: "قزوین", province: "قزوین" },
+  { id: 21, name: "خیام", city: "قزوین", province: "قزوین" },
+  { id: 22, name: "فردوسی", city: "قزوین", province: "قزوین" },
+  { id: 23, name: "فلسطین", city: "قزوین", province: "قزوین" },
+  { id: 24, name: "ولیعصر", city: "قزوین", province: "قزوین" },
+  { id: 25, name: "نواب", city: "قزوین", province: "قزوین" },
+  { id: 26, name: "سعدی", city: "قزوین", province: "قزوین" },
+  { id: 27, name: "مولوی", city: "قزوین", province: "قزوین" },
+  { id: 28, name: "منتظری", city: "قزوین", province: "قزوین" },
+  { id: 29, name: "باغ دبیر", city: "قزوین", province: "قزوین" },
+  { id: 30, name: "سپه (شهدا)", city: "قزوین", province: "قزوین" },
+  { id: 31, name: "هادی آباد", city: "قزوین", province: "قزوین" },
+  { id: 32, name: "مهدیه", city: "قزوین", province: "قزوین" },
+  { id: 33, name: "دروازه رشت", city: "قزوین", province: "قزوین" },
+  { id: 34, name: "مصیب مرادی", city: "قزوین", province: "قزوین" },
+  { id: 35, name: "جابرین حیان", city: "قزوین", province: "قزوین" },
+  { id: 36, name: "سالن ورزشی معلولین", city: "قزوین", province: "قزوین" },
+  { id: 37, name: "امام حسن", city: "قزوین", province: "قزوین" },
+  { id: 38, name: "امام سجاد", city: "قزوین", province: "قزوین" },
+];
+
+const INITIAL_SCHEDULED_SERVICES: ScheduledService[] = [
+  // 1405-06-01
+  {
+    id: "srv-0601-1",
+    date: "1405-06-01",
+    buildingName: "بلوک حافظ",
+    status: "pending",
+    technician: "میثم سهرابی",
+    techCount: 5,
+    zone: "مسکن مهر قزوین - البرز",
+    contractNo: "5004",
+    customerName: "اسدزاده بلوک حافظ",
+    customerPhone: "09121812345",
+    address: "قزوین، مسکن مهر، بلوک حافظ",
+  },
+  {
+    id: "srv-0601-2",
+    date: "1405-06-01",
+    buildingName: "کاکاوند نژاد بلوک 7",
+    status: "pending",
+    technician: "میثم سهرابی",
+    techCount: 5,
+    zone: "مسکن مهر قزوین - البرز",
+    contractNo: "5541",
+    customerName: "کاکاوند نژاد بلوک 7",
+    customerPhone: "09123819021",
+    address: "قزوین، مسکن مهر، مجتمع کاکاوند نژاد، بلوک ۷",
+  },
+  {
+    id: "srv-0601-3",
+    date: "1405-06-01",
+    buildingName: "بلوک 18",
+    status: "done",
+    technician: "میثم سهرابی",
+    techCount: 5,
+    zone: "الوند قزوین - قزوین",
+    contractNo: "5002",
+    customerName: "نریمان بلوک 18",
+    customerPhone: "09128821903",
+    address: "قزوین، الوند، مجتمع نریمان، بلوک ۱۸",
+  },
+  {
+    id: "srv-0601-4",
+    date: "1405-06-01",
+    buildingName: "بلوک 19",
+    status: "done",
+    technician: "میثم سهرابی",
+    techCount: 5,
+    zone: "الوند قزوین - قزوین",
+    contractNo: "5003",
+    customerName: "نریمان بلوک 19",
+    customerPhone: "09128821904",
+    address: "قزوین، الوند، مجتمع نریمان، بلوک ۱۹",
+  },
+
+  // 1405-06-02
+  {
+    id: "srv-0602-1",
+    date: "1405-06-02",
+    buildingName: "الماسی کوچه 20",
+    status: "done",
+    technician: "میثم سهرابی",
+    techCount: 5,
+    zone: "امام سجاد قزوین - البرز",
+    contractNo: "5518",
+    customerName: "الماسی",
+    customerPhone: "09121817744",
+    address: "قزوین، خ امام سجاد، کوچه ۲۰، پلاک ۱۲",
+  },
+  {
+    id: "srv-0602-2",
+    date: "1405-06-02",
+    buildingName: "امید ولی",
+    status: "done",
+    technician: "میثم سهرابی",
+    techCount: 5,
+    zone: "امام سجاد قزوین - البرز",
+    contractNo: "5065",
+    customerName: "امید ولی",
+    customerPhone: "09125816392",
+    address: "قزوین، شهرک امام سجاد، مجتمع امید ولی",
+  },
+  {
+    id: "srv-0602-3",
+    date: "1405-06-02",
+    buildingName: "رحیمی خ امام عسگری",
+    status: "done",
+    technician: "بهمن کشاورز",
+    techCount: 5,
+    zone: "امام سجاد قزوین - البرز",
+    contractNo: "5012",
+    customerName: "رحیمی خ امام عسگری(ع)",
+    customerPhone: "09192815521",
+    address: "قزوین، خ امام حسن عسگری، ساختمان رحیمی",
+  },
+  {
+    id: "srv-0602-4",
+    date: "1405-06-02",
+    buildingName: "قربانی کوچه 24",
+    status: "done",
+    technician: "بهمن کشاورز",
+    techCount: 5,
+    zone: "امام سجاد قزوین - البرز",
+    contractNo: "5015",
+    customerName: "قربانی",
+    customerPhone: "09127814409",
+    address: "قزوین، خ امام سجاد، کوچه ۲۴",
+  },
+
+  // 1405-06-03
+  {
+    id: "srv-0603-1",
+    date: "1405-06-03",
+    buildingName: "صیادان ساختمان ترنج",
+    status: "pending",
+    technician: "بهمن کشاورز",
+    techCount: 4,
+    zone: "جابربن حیان قزوین - البرز",
+    contractNo: "4543",
+    customerName: "صیادان ساختمان ترنج",
+    customerPhone: "09123812948",
+    address: "قزوین، بلوار جابربن حیان، مجتمع صیادان، بلوک ترنج",
+  },
+  {
+    id: "srv-0603-2",
+    date: "1405-06-03",
+    buildingName: "فکوری صداقت 8",
+    status: "pending",
+    technician: "بهمن کشاورز",
+    techCount: 5,
+    zone: "سالن ورزشی معلولین قزوین - البرز",
+    contractNo: "5516",
+    customerName: "فکوری",
+    customerPhone: "09128813390",
+    address: "قزوین، کوچه صداقت ۸، پلاک ۴",
+  },
+  {
+    id: "srv-0603-3",
+    date: "1405-06-03",
+    buildingName: "کوخالو بصیرت 3",
+    status: "pending",
+    technician: "بهمن کشاورز",
+    techCount: 5,
+    zone: "سالن ورزشی معلولین قزوین - البرز",
+    contractNo: "5043",
+    customerName: "کوخالو بصیرت 3",
+    customerPhone: "09121818822",
+    address: "قزوین، خیابان بصیرت، بصیرت ۳",
+  },
+  {
+    id: "srv-0603-4",
+    date: "1405-06-03",
+    buildingName: "کشاورز بصیرت 4",
+    status: "pending",
+    technician: "میثم سهرابی",
+    techCount: 5,
+    zone: "سالن ورزشی معلولین قزوین - البرز",
+    contractNo: "5044",
+    customerName: "کشاورز بصیرت 4",
+    customerPhone: "09191817733",
+    address: "قزوین، خیابان بصیرت، بصیرت ۴",
+  },
+
+  // 1405-06-04
+  {
+    id: "srv-0604-1",
+    date: "1405-06-04",
+    buildingName: "موسوی قطعه 34",
+    status: "pending",
+    technician: "بهمن کشاورز",
+    techCount: 5,
+    zone: "امام حسن قزوین",
+    contractNo: "5210",
+    customerName: "موسوی قطعه 34",
+    customerPhone: "09129810011",
+    address: "قزوین، شهرک امام حسن، قطعه ۳۴",
+  },
+  {
+    id: "srv-0604-2",
+    date: "1405-06-04",
+    buildingName: "شفیعی پرسپولیس 4",
+    status: "pending",
+    technician: "بهمن کشاورز",
+    techCount: 5,
+    zone: "امام حسن قزوین",
+    contractNo: "5211",
+    customerName: "شفیعی پرسپولیس 4",
+    customerPhone: "09124819922",
+    address: "قزوین، میدان پرسپولیس، کوچه ۴، ساختمان شفیعی",
+  },
+  {
+    id: "srv-0604-3",
+    date: "1405-06-04",
+    buildingName: "ملایی الوند",
+    status: "pending",
+    technician: "بهمن کشاورز",
+    techCount: 5,
+    zone: "امام حسن قزوین",
+    contractNo: "5212",
+    customerName: "زهره ملایی",
+    customerPhone: "09123814455",
+    address: "قزوین، الوند، خ امام حسن، پلاک ۴۲",
+  },
+  {
+    id: "srv-0604-4",
+    date: "1405-06-04",
+    buildingName: "اسدی الوند خ10متری",
+    status: "done",
+    technician: "بهمن کشاورز",
+    techCount: 5,
+    zone: "الوند قزوین - قزوین",
+    contractNo: "5019",
+    customerName: "اسدی",
+    customerPhone: "09126815566",
+    address: "قزوین، الوند، خیابان ۱۰ متری سوم",
+  },
+
+  // 1405-06-05
+  {
+    id: "srv-0605-1",
+    date: "1405-06-05",
+    buildingName: "مجتمع مسکونی نیلوفر",
+    status: "pending",
+    technician: "محسن امامی برسری",
+    techCount: 6,
+    zone: "نوروزیان قزوین",
+    contractNo: "4820",
+    customerName: "مهندس احمدی",
+    customerPhone: "09128811122",
+    address: "قزوین، بلوار نوروزیان، حکمت ۴۸",
+  },
+  {
+    id: "srv-0605-2",
+    date: "1405-06-05",
+    buildingName: "برج آسمان",
+    status: "pending",
+    technician: "مجتبی فرهمند",
+    techCount: 4,
+    zone: "دانشگاه قزوین",
+    contractNo: "4901",
+    customerName: "حسینی آسمان",
+    customerPhone: "09127813344",
+    address: "قزوین، بلوار دانشگاه، نبش آسمان سوم",
+  },
+  {
+    id: "srv-0605-3",
+    date: "1405-06-05",
+    buildingName: "ساختمان پزشکان سینا",
+    status: "done",
+    technician: "محسن امامی برسری",
+    techCount: 6,
+    zone: "فردوسی قزوین",
+    contractNo: "5102",
+    customerName: "دکتر رضایی",
+    customerPhone: "09123817788",
+    address: "قزوین، خیابان فردوسی، کوچه سینا",
+  },
+
+  // 1405-06-06
+  {
+    id: "srv-0606-1",
+    date: "1405-06-06",
+    buildingName: "ساختمان سپیدار",
+    status: "pending",
+    technician: "محمد حسن رحیمی زاده",
+    techCount: 5,
+    zone: "ملاصدرا قزوین",
+    contractNo: "5300",
+    customerName: "محمدی سپیدار",
+    customerPhone: "09121815599",
+    address: "قزوین، ملاصدرا غربی، سپیدار ۲",
+  },
+  {
+    id: "srv-0606-2",
+    date: "1405-06-06",
+    buildingName: "مجتمع پاسارگاد",
+    status: "pending",
+    technician: "مرتضی قاسمعلی",
+    techCount: 5,
+    zone: "خیام قزوین",
+    contractNo: "5312",
+    customerName: "امینی پاسارگاد",
+    customerPhone: "09124816677",
+    address: "قزوین، خیابان خیام شمالی، نبش کوچه شهادت",
+  },
+];
+
 let contracts: Contract[] = loadStorage<Contract[]>("tlift_contracts", initialContracts);
 let customers: Customer[] = loadStorage<Customer[]>("tlift_customers", initialCustomers);
 let staff: Staff[] = loadStorage<Staff[]>("tlift_staff", initialStaff);
+let marketingItems: MarketingItem[] = loadStorage<MarketingItem[]>("tlift_marketing_items", INITIAL_MARKETING_ITEMS);
+let scheduledServices: ScheduledService[] = loadStorage<ScheduledService[]>("tlift_scheduled_services", INITIAL_SCHEDULED_SERVICES);
+let zones: ZoneItem[] = loadStorage<ZoneItem[]>("tlift_zones_v2", INITIAL_ZONES);
 
 // Auto-seed CSV contracts if only default demo contracts are present
 const isCsvSeeded = loadStorage<boolean>("tlift_csv_seeded_v1", false);
@@ -655,6 +1025,176 @@ export const appStore = {
     saveStorage("tlift_staff", staff);
     notifyListeners();
   },
+
+  // MARKETING ITEMS
+  getMarketingItems: () => marketingItems,
+  isItemInMarketing: (name: string, section?: string) => {
+    return marketingItems.some(
+      (it) => it.name === name && (!section || it.section === section)
+    );
+  },
+  toggleMarketingItem: (item: { name: string; section: string; groupTitle?: string }) => {
+    const existingIndex = marketingItems.findIndex(
+      (it) => it.name === item.name && it.section === item.section
+    );
+    let added = false;
+    if (existingIndex >= 0) {
+      marketingItems = marketingItems.filter((_, idx) => idx !== existingIndex);
+      added = false;
+    } else {
+      const newItem: MarketingItem = {
+        id: `${item.section}:${item.name}`,
+        name: item.name,
+        section: item.section,
+        groupTitle: item.groupTitle,
+        pinnedAt: Date.now(),
+      };
+      marketingItems = [...marketingItems, newItem];
+      added = true;
+    }
+    saveStorage("tlift_marketing_items", marketingItems);
+    notifyListeners();
+    return added;
+  },
+  removeMarketingItem: (idOrName: string, section?: string) => {
+    marketingItems = marketingItems.filter(
+      (it) => !(it.id === idOrName || (it.name === idOrName && (!section || it.section === section)))
+    );
+    saveStorage("tlift_marketing_items", marketingItems);
+    notifyListeners();
+  },
+  clearMarketingItems: () => {
+    marketingItems = [];
+    saveStorage("tlift_marketing_items", marketingItems);
+    notifyListeners();
+  },
+  // SCHEDULED SERVICES
+  getScheduledServices: () => scheduledServices,
+  toggleScheduledServiceStatus: (id: string) => {
+    scheduledServices = scheduledServices.map((s) =>
+      s.id === id
+        ? {
+            ...s,
+            status: s.status === "done" ? "pending" : "done",
+            lastUpdated: Date.now(),
+          }
+        : s
+    );
+    saveStorage("tlift_scheduled_services", scheduledServices);
+    notifyListeners();
+  },
+  updateScheduledServiceDate: (id: string, newDate: string) => {
+    scheduledServices = scheduledServices.map((s) =>
+      s.id === id ? { ...s, date: newDate, lastUpdated: Date.now() } : s
+    );
+    saveStorage("tlift_scheduled_services", scheduledServices);
+    notifyListeners();
+  },
+  updateScheduledServiceTechnician: (id: string, newTech: string) => {
+    scheduledServices = scheduledServices.map((s) =>
+      s.id === id ? { ...s, technician: newTech, lastUpdated: Date.now() } : s
+    );
+    saveStorage("tlift_scheduled_services", scheduledServices);
+    notifyListeners();
+  },
+  addScheduledServiceReport: (id: string, report: string) => {
+    scheduledServices = scheduledServices.map((s) =>
+      s.id === id
+        ? {
+            ...s,
+            report,
+            status: "done", // Adding a report automatically marks as done
+            lastUpdated: Date.now(),
+          }
+        : s
+    );
+    saveStorage("tlift_scheduled_services", scheduledServices);
+    notifyListeners();
+  },
+  addScheduledServicePartRequest: (
+    id: string,
+    part: { name: string; qty: number; reason: string }
+  ) => {
+    scheduledServices = scheduledServices.map((s) => {
+      if (s.id !== id) return s;
+      const partsRequested = s.partsRequested || [];
+      const newPart = {
+        id: `part-req-${Date.now()}`,
+        name: part.name,
+        qty: part.qty,
+        reason: part.reason,
+        date: new Date().toLocaleDateString("fa-IR"),
+      };
+      return {
+        ...s,
+        partsRequested: [...partsRequested, newPart],
+        lastUpdated: Date.now(),
+      };
+    });
+    saveStorage("tlift_scheduled_services", scheduledServices);
+    notifyListeners();
+  },
+  addScheduledService: (service: Omit<ScheduledService, "id">) => {
+    const newService: ScheduledService = {
+      ...service,
+      id: `srv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      lastUpdated: Date.now(),
+    };
+    scheduledServices = [newService, ...scheduledServices];
+    saveStorage("tlift_scheduled_services", scheduledServices);
+    notifyListeners();
+    return newService;
+  },
+  deleteScheduledService: (id: string) => {
+    scheduledServices = scheduledServices.filter((s) => s.id !== id);
+    saveStorage("tlift_scheduled_services", scheduledServices);
+    notifyListeners();
+  },
+  resetScheduledServicesToDefault: () => {
+    scheduledServices = INITIAL_SCHEDULED_SERVICES;
+    saveStorage("tlift_scheduled_services", scheduledServices);
+    notifyListeners();
+  },
+
+  // Zone Management
+  getZones: () => zones,
+  addZone: (data: { name: string; city?: string; province?: string }) => {
+    const nextId = zones.length > 0 ? Math.max(...zones.map((z) => z.id)) + 1 : 1;
+    const newZone: ZoneItem = {
+      id: nextId,
+      name: data.name.trim(),
+      city: data.city?.trim() || "قزوین",
+      province: data.province?.trim() || "قزوین",
+    };
+    zones = [...zones, newZone];
+    saveStorage("tlift_zones_v2", zones);
+    notifyListeners();
+    return newZone;
+  },
+  updateZone: (id: number, data: { name: string; city?: string; province?: string }) => {
+    zones = zones.map((z) =>
+      z.id === id
+        ? {
+            ...z,
+            name: data.name.trim(),
+            city: data.city?.trim() || z.city,
+            province: data.province?.trim() || z.province,
+          }
+        : z
+    );
+    saveStorage("tlift_zones_v2", zones);
+    notifyListeners();
+  },
+  deleteZone: (id: number) => {
+    zones = zones.filter((z) => z.id !== id);
+    saveStorage("tlift_zones_v2", zones);
+    notifyListeners();
+  },
+  resetZonesToDefault: () => {
+    zones = INITIAL_ZONES;
+    saveStorage("tlift_zones_v2", zones);
+    notifyListeners();
+  },
 };
 
 // React Hooks
@@ -695,5 +1235,35 @@ export function useStaff() {
       return () => listeners.delete(callback);
     },
     () => staff
+  );
+}
+
+export function useMarketingItems() {
+  return useSyncExternalStore(
+    (callback) => {
+      listeners.add(callback);
+      return () => listeners.delete(callback);
+    },
+    () => marketingItems
+  );
+}
+
+export function useScheduledServices() {
+  return useSyncExternalStore(
+    (callback) => {
+      listeners.add(callback);
+      return () => listeners.delete(callback);
+    },
+    () => scheduledServices
+  );
+}
+
+export function useZones() {
+  return useSyncExternalStore(
+    (callback) => {
+      listeners.add(callback);
+      return () => listeners.delete(callback);
+    },
+    () => zones
   );
 }

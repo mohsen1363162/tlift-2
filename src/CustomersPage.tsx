@@ -1,12 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  Search,
-  Filter,
-  Settings,
-  RotateCw,
-  FileText,
-  Sheet,
-  Check,
   MoreVertical,
   ChevronLeft,
   ChevronRight,
@@ -19,12 +12,27 @@ import {
   Paperclip,
   Lock,
   SquareArrowOutUpRight,
+  Check,
+  Sheet,
 } from "lucide-react";
 import type { Theme } from "./theme";
-import { Customer, provinces, cities } from "./data";
+import { Customer, provinces, cities, Contract } from "./data";
 import { useCustomers, appStore } from "./store";
+import TableToolbar from "./components/TableToolbar";
+import ColumnSettingsDrawer, { ColumnDef } from "./components/ColumnSettingsDrawer";
+import PrintTableModal from "./components/PrintTableModal";
+import { exportToExcel } from "./utils/exportUtils";
 
 const PAGE = 12;
+
+const CUSTOMER_COLUMNS: ColumnDef[] = [
+  { key: "name", title: "نام مشتری", visible: true },
+  { key: "isLegal", title: "نوع", visible: true },
+  { key: "phone", title: "شماره تماس", visible: true },
+  { key: "buildings", title: "ساختمان ها", visible: true },
+  { key: "active", title: "فعال", visible: true },
+  { key: "sms", title: "ارسال پیامک", visible: true },
+];
 
 export default function CustomersPage({
   t,
@@ -45,9 +53,20 @@ export default function CustomersPage({
   const [toast, setToast] = useState<string | null>(null);
   const [rowMenu, setRowMenu] = useState<{ id: number; x: number; y: number } | null>(null);
 
+  // Drawers and print
+  const [columns, setColumns] = useState<ColumnDef[]>(CUSTOMER_COLUMNS);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
   const notify = (m: string) => {
     setToast(m);
     setTimeout(() => setToast(null), 2500);
+  };
+
+  const handleToggleColumn = (key: string) => {
+    setColumns((prev) =>
+      prev.map((c) => (c.key === key ? { ...c, visible: !c.visible } : c))
+    );
   };
 
   const rowActions = (c: Customer) => [
@@ -96,19 +115,39 @@ export default function CustomersPage({
   const addCustomer = (c: Omit<Customer, "id">) => {
     appStore.addCustomer(c);
     setOpen(false);
-    setToast("مشتری با موفقیت ثبت و ذخیره شد");
-    setTimeout(() => setToast(null), 2500);
+    notify("مشتری با موفقیت ثبت و ذخیره شد");
+  };
+
+  const handleExportExcel = () => {
+    exportToExcel(
+      list as unknown as Record<string, unknown>[],
+      columns
+        .filter((c) => c.visible)
+        .map((c) => ({
+          key: c.key,
+          title: c.title,
+          render: (item: Record<string, unknown>) => {
+            if (c.key === "isLegal") return item.isLegal ? "حقوقی" : "حقیقی";
+            if (c.key === "active") return item.active ? "بله" : "خیر";
+            if (c.key === "sms") return item.sms ? "بله" : "خیر";
+            return item[c.key] ?? "";
+          },
+        })),
+      "لیست_مشتریان"
+    );
+    notify("فایل اکسل مشتریان با موفقیت دریافت شد");
   };
 
   const chip = (key: typeof tab, label: string, count: number, color: string) => (
     <button
+      key={key}
       type="button"
       onClick={() => {
         setTab(key);
         setPage(1);
       }}
       className={`flex items-center gap-2 rounded px-2 py-1 text-[12px] ${t.text} ${
-        tab === key ? "ring-1 ring-violet-400" : ""
+        tab === key ? "ring-1 ring-violet-400 font-semibold" : ""
       } ${t.hover}`}
     >
       <span>{label}</span>
@@ -118,26 +157,24 @@ export default function CustomersPage({
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
-      {/* toolbar */}
-      <div className={`flex flex-wrap items-center gap-2 border-b ${t.border} px-3 py-2`}>
-        <div className={`flex h-8 w-[240px] items-center gap-2 rounded border px-2 ${t.input}`}>
-          <Search size={14} className={t.sub} />
-          <input
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setPage(1);
-            }}
-            placeholder="جستجو خودکار با نام یا تلفن..."
-            className="w-full bg-transparent text-[12px] outline-none"
-          />
-        </div>
-        {[Filter, Settings, RotateCw, FileText, Sheet].map((I, i) => (
-          <button key={i} type="button" className={`rounded p-1.5 ${t.hover} ${t.sub}`}>
-            <I size={17} />
-          </button>
-        ))}
+      {/* Table Toolbar with 5 Action Icons */}
+      <TableToolbar
+        searchQuery={q}
+        onSearchChange={(val) => {
+          setQ(val);
+          setPage(1);
+        }}
+        searchPlaceholder="جستجو خودکار با نام یا تلفن..."
+        onOpenFilter={() => notify("فیلترهای مشتریان فعال هستند")}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onRefresh={() => notify("اطلاعات مشتریان با موفقیت به‌روزرسانی شد")}
+        onPrint={() => setIsPrintModalOpen(true)}
+        onExportExcel={handleExportExcel}
+        hasActiveFilters={tab !== "all"}
+        t={t}
+      >
         <div className="flex-1" />
+
         {onOpenCsvUpload && (
           <button
             type="button"
@@ -149,68 +186,108 @@ export default function CustomersPage({
             <span>آپلود فایل CSV مشتریان</span>
           </button>
         )}
+
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="rounded bg-violet-500 px-3 py-1.5 text-[12.5px] text-white hover:bg-violet-600 shadow-sm"
+          className="rounded bg-violet-600 px-3.5 py-1.5 text-[12.5px] text-white hover:bg-violet-700 shadow-sm transition"
         >
           اضافه کردن مشتری
         </button>
+
         {chip("all", "همه", customers.length, "bg-neutral-600")}
         {chip("inactive", "غیرفعال", customers.filter((c) => !c.active).length, "bg-red-600")}
         {chip("active", "فعال", customers.filter((c) => c.active).length, "bg-green-700")}
-      </div>
+      </TableToolbar>
 
-      {/* table */}
+      {/* Customers Table */}
       <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full text-[12.5px]">
           <thead className={`${t.head} ${t.sub}`}>
             <tr>
-              <th className="w-10 px-3 py-2.5 text-right font-normal">ردیف</th>
-              <th className="px-3 py-2.5 text-right font-normal">نام مشتری</th>
-              <th className="w-24 px-3 py-2.5 text-center font-normal">نوع</th>
-              <th className="w-36 px-3 py-2.5 text-center font-normal">شماره تماس</th>
-              <th className="w-28 px-3 py-2.5 text-center font-normal">ساختمان ها</th>
-              <th className="w-20 px-3 py-2.5 text-center font-normal">فعال</th>
-              <th className="w-24 px-3 py-2.5 text-center font-normal">ارسال پیامک</th>
+              <th className="w-12 px-3 py-2.5 text-right font-normal">ردیف</th>
+              {columns
+                .filter((c) => c.visible)
+                .map((col) => (
+                  <th
+                    key={col.key}
+                    className={`px-3 py-2.5 font-normal ${
+                      col.key === "name" ? "text-right" : "text-center"
+                    }`}
+                  >
+                    {col.title}
+                  </th>
+                ))}
               <th className="w-10" />
             </tr>
           </thead>
           <tbody className={t.text}>
             {shown.map((c, i) => (
               <tr key={c.id} className={`border-b ${t.border} ${t.row}`}>
-                <td className="px-3 py-3">{(page - 1) * PAGE + i + 1}</td>
-                <td
-                  className="px-3 py-3 font-semibold cursor-pointer hover:text-violet-400"
-                  onClick={() => {
-                    const contract = appStore.getOrCreateContractForCustomer(c.name);
-                    onOpenContract?.(contract);
-                  }}
-                  title="کلیک برای باز کردن پرونده قرارداد"
-                >
-                  {c.name}
-                </td>
-                <td className="px-3 py-3 text-center">
-                  {c.isLegal ? (
-                    <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[11px] font-semibold">
-                      حقوقی
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded bg-zinc-700/60 text-zinc-300 text-[11px]">
-                      حقیقی
-                    </span>
-                  )}
-                </td>
-                <td className="px-3 py-3 text-center font-mono text-zinc-300" dir="ltr">
-                  {c.phone || "—"}
-                </td>
-                <td className="px-3 py-3 text-center">{c.buildings}</td>
-                <td className="px-3 py-3 text-center">
-                  {c.active && <Check size={15} className="mx-auto text-green-500" />}
-                </td>
-                <td className="px-3 py-3 text-center">
-                  {c.sms && <Check size={15} className="mx-auto text-green-500" />}
-                </td>
+                <td className="px-3 py-3 font-mono text-zinc-400">{(page - 1) * PAGE + i + 1}</td>
+                {columns
+                  .filter((col) => col.visible)
+                  .map((col) => {
+                    if (col.key === "name") {
+                      return (
+                        <td
+                          key={col.key}
+                          className="px-3 py-3 font-semibold cursor-pointer hover:text-violet-400 transition"
+                          onClick={() => {
+                            const contract = appStore.getOrCreateContractForCustomer(c.name);
+                            onOpenContract?.(contract);
+                          }}
+                          title="کلیک برای باز کردن پرونده قرارداد"
+                        >
+                          {c.name}
+                        </td>
+                      );
+                    }
+                    if (col.key === "isLegal") {
+                      return (
+                        <td key={col.key} className="px-3 py-3 text-center">
+                          {c.isLegal ? (
+                            <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[11px] font-semibold">
+                              حقوقی
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded bg-zinc-700/60 text-zinc-300 text-[11px]">
+                              حقیقی
+                            </span>
+                          )}
+                        </td>
+                      );
+                    }
+                    if (col.key === "phone") {
+                      return (
+                        <td key={col.key} className="px-3 py-3 text-center font-mono text-zinc-300" dir="ltr">
+                          {c.phone || "—"}
+                        </td>
+                      );
+                    }
+                    if (col.key === "buildings") {
+                      return <td key={col.key} className="px-3 py-3 text-center">{c.buildings}</td>;
+                    }
+                    if (col.key === "active") {
+                      return (
+                        <td key={col.key} className="px-3 py-3 text-center">
+                          {c.active && <Check size={15} className="mx-auto text-green-500" />}
+                        </td>
+                      );
+                    }
+                    if (col.key === "sms") {
+                      return (
+                        <td key={col.key} className="px-3 py-3 text-center">
+                          {c.sms && <Check size={15} className="mx-auto text-green-500" />}
+                        </td>
+                      );
+                    }
+                    return (
+                      <td key={col.key} className="px-3 py-3 text-center">
+                        {String((c as unknown as Record<string, unknown>)[col.key] || "—")}
+                      </td>
+                    );
+                  })}
                 <td className="px-2 text-center">
                   <button
                     type="button"
@@ -227,7 +304,7 @@ export default function CustomersPage({
             ))}
             {shown.length === 0 && (
               <tr>
-                <td colSpan={8} className={`py-10 text-center ${t.sub}`}>
+                <td colSpan={columns.filter((c) => c.visible).length + 2} className={`py-10 text-center ${t.sub}`}>
                   موردی یافت نشد
                 </td>
               </tr>
@@ -236,7 +313,7 @@ export default function CustomersPage({
         </table>
       </div>
 
-      {/* footer */}
+      {/* Footer Pagination */}
       <div className={`flex items-center justify-between border-t ${t.border} px-3 py-2 text-[12px] ${t.text}`}>
         <div className={`flex items-center gap-1 rounded border px-2 py-1 ${t.border} ${t.sub}`}>
           <ChevronDown size={13} /> <span>{PAGE} / صفحه</span>
@@ -255,7 +332,7 @@ export default function CustomersPage({
               type="button"
               onClick={() => setPage(i + 1)}
               className={`h-6 w-6 rounded text-[12px] ${
-                page === i + 1 ? "bg-violet-500 text-white" : `${t.hover} ${t.sub}`
+                page === i + 1 ? "bg-violet-600 text-white font-semibold" : `${t.hover} ${t.sub}`
               }`}
             >
               {i + 1}
@@ -269,11 +346,42 @@ export default function CustomersPage({
             <ChevronLeft size={15} />
           </button>
         </div>
-        <span className={t.sub}>{list.length} مورد پیدا شد</span>
+        <span className={t.sub}>{list.length.toLocaleString("fa-IR")} مورد پیدا شد</span>
       </div>
 
+      {/* Drawers & Modals */}
+      <ColumnSettingsDrawer
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        columns={columns}
+        onToggleColumn={handleToggleColumn}
+        onSave={() => notify("تنظیمات ستون‌های مشتریان اعمال شد")}
+        t={t}
+      />
+
+      <PrintTableModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title="لیست مشتریان و طرف‌های حساب"
+        data={list as unknown as Record<string, unknown>[]}
+        columns={columns
+          .filter((c) => c.visible)
+          .map((c) => ({
+            key: c.key,
+            title: c.title,
+            align: c.key === "name" ? "right" : "center",
+            render: (item: Record<string, unknown>) => {
+              if (c.key === "isLegal") return item.isLegal ? "حقوقی" : "حقیقی";
+              if (c.key === "active") return item.active ? "فعال" : "غیرفعال";
+              if (c.key === "sms") return item.sms ? "بله" : "خیر";
+              return (item[c.key] as string) ?? "-";
+            },
+          }))}
+        t={t}
+      />
+
       {toast && (
-        <div className="absolute bottom-14 left-1/2 -translate-x-1/2 rounded bg-green-600 px-4 py-2 text-[12.5px] text-white shadow-lg">
+        <div className="absolute bottom-14 left-1/2 -translate-x-1/2 rounded bg-neutral-800 border border-neutral-700 px-4 py-2 text-[12.5px] text-white shadow-xl">
           {toast}
         </div>
       )}

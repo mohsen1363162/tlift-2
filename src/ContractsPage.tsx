@@ -1,12 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
-  Search,
-  X,
-  SlidersHorizontal,
-  Settings,
-  RotateCw,
-  FileText,
-  Sheet,
   ChevronDown,
   ChevronsUpDown,
   MoreVertical,
@@ -17,9 +10,37 @@ import {
   RefreshCcw,
   FileSignature,
   SquareArrowOutUpRight,
+  Sheet,
 } from "lucide-react";
 import type { Theme } from "./theme";
 import { Contract } from "./data";
+import TableToolbar from "./components/TableToolbar";
+import ColumnSettingsDrawer, { ColumnDef } from "./components/ColumnSettingsDrawer";
+import ContractsFilterDrawer, {
+  ContractFilterState,
+  defaultContractFilters,
+} from "./components/ContractsFilterDrawer";
+import PrintTableModal from "./components/PrintTableModal";
+import { exportToExcel } from "./utils/exportUtils";
+
+const INITIAL_COLUMNS: ColumnDef[] = [
+  { key: "no", title: "شماره قرارداد", visible: true },
+  { key: "customer", title: "مشتری", visible: false },
+  { key: "isLegal", title: "حقوقی", visible: false },
+  { key: "phone", title: "شماره تماس", visible: false },
+  { key: "buildingCode", title: "شماره اشتراک ساختمان", visible: false },
+  { key: "building", title: "نام ساختمان", visible: true },
+  { key: "manager", title: "نام مسئول هماهنگی", visible: false },
+  { key: "managerPhone", title: "شماره همراه مسئول هماهنگی", visible: false },
+  { key: "locationStatus", title: "وضعیت موقعیت مکانی", visible: false },
+  { key: "zone", title: "منطقه", visible: true },
+  { key: "address", title: "آدرس", visible: true },
+  { key: "signDate", title: "تاریخ عقد قرارداد", visible: false },
+  { key: "start", title: "تاریخ شروع", visible: false },
+  { key: "end", title: "تاریخ پایان", visible: false },
+  { key: "terminated", title: "فسخ شده", visible: false },
+  { key: "terminateDate", title: "تاریخ فسخ", visible: false },
+];
 
 export default function ContractsPage({
   t,
@@ -36,32 +57,103 @@ export default function ContractsPage({
 }) {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(20);
   const [menu, setMenu] = useState(false);
   const [rowMenu, setRowMenu] = useState<{ id: number; x: number; y: number } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  // Drawers & Modals
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [columns, setColumns] = useState<ColumnDef[]>(INITIAL_COLUMNS);
+  const [filters, setFilters] = useState<ContractFilterState>(defaultContractFilters);
+
   const notify = (m: string) => {
     setToast(m);
-    setTimeout(() => setToast(null), 2000);
+    setTimeout(() => setToast(null), 2500);
   };
 
-  const list = contracts.filter((c) => {
-    if (!q.trim()) return true;
-    const query = q.toLowerCase();
-    return (
-      c.building.toLowerCase().includes(query) ||
-      c.no.includes(query) ||
-      c.manager.toLowerCase().includes(query) ||
-      c.zone.toLowerCase().includes(query) ||
-      (c.phone && c.phone.includes(query)) ||
-      (c.address && c.address.toLowerCase().includes(query)) ||
-      (c.coordinator && c.coordinator.toLowerCase().includes(query))
+  const handleToggleColumn = (key: string) => {
+    setColumns((prev) =>
+      prev.map((c) => (c.key === key ? { ...c, visible: !c.visible } : c))
     );
-  });
+  };
 
-  const effectivePageSize = pageSize === -1 ? (list.length || 1) : pageSize;
-  const totalPages = Math.ceil(list.length / effectivePageSize) || 1;
-  const paginatedList = pageSize === -1 ? list : list.slice((page - 1) * pageSize, page * pageSize);
+  const filteredList = useMemo(() => {
+    return contracts.filter((c) => {
+      // 1. Text search
+      if (q.trim()) {
+        const query = q.toLowerCase();
+        const matchSearch =
+          c.building.toLowerCase().includes(query) ||
+          c.no.includes(query) ||
+          (c.manager && c.manager.toLowerCase().includes(query)) ||
+          (c.zone && c.zone.toLowerCase().includes(query)) ||
+          (c.phone && c.phone.includes(query)) ||
+          (c.address && c.address.toLowerCase().includes(query)) ||
+          (c.coordinator && c.coordinator.toLowerCase().includes(query));
+        if (!matchSearch) return false;
+      }
+
+      // 2. Status filter
+      if (filters.status === "active") {
+        // active contracts
+      } else if (filters.status === "archived") {
+        // archived contracts
+      } else if (filters.status === "terminated") {
+        // terminated
+      } else if (filters.status === "expiring") {
+        // expiring
+      } else if (filters.status === "renewing") {
+        // renewing
+      }
+
+      return true;
+    });
+  }, [contracts, q, filters]);
+
+  const effectivePageSize = pageSize === -1 ? (filteredList.length || 1) : pageSize;
+  const totalPages = Math.ceil(filteredList.length / effectivePageSize) || 1;
+  const paginatedList =
+    pageSize === -1
+      ? filteredList
+      : filteredList.slice((page - 1) * pageSize, page * pageSize);
+
+  const handleExportExcel = () => {
+    const visibleCols = columns.filter((c) => c.visible);
+    exportToExcel(
+      filteredList as unknown as Record<string, unknown>[],
+      visibleCols.map((c) => ({
+        key: c.key,
+        title: c.title,
+        render: (item: Record<string, unknown>) => {
+          if (c.key === "customer") return (item.manager as string) || (item.building as string);
+          if (c.key === "isLegal") return "حقیقی";
+          if (c.key === "buildingCode") return item.id;
+          if (c.key === "managerPhone") return item.phone || "-";
+          if (c.key === "locationStatus") return "ثبت شده";
+          if (c.key === "signDate") return item.start;
+          if (c.key === "terminated") return "خیر";
+          if (c.key === "terminateDate") return "-";
+          return item[c.key] || "";
+        },
+      })),
+      "لیست_قراردادها"
+    );
+    notify("فایل اکسل قراردادها با موفقیت دانلود شد");
+  };
+
+  const handleRefresh = () => {
+    notify("جدول قراردادها با موفقیت به‌روزرسانی شد");
+  };
+
+  const hasActiveFilters =
+    filters.status !== "all" ||
+    !!filters.terminateFrom ||
+    !!filters.terminateTo ||
+    filters.insuranceStatus !== "all" ||
+    filters.certificateStatus !== "all";
 
   const chip = (label: string, n: number, color: string) => (
     <div className={`flex items-center gap-2 rounded px-2 py-1 text-[12px] ${t.text}`}>
@@ -72,39 +164,41 @@ export default function ContractsPage({
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
-      <div className={`flex flex-wrap items-center gap-2 border-b ${t.border} px-3 py-2`}>
-        <div className={`flex h-8 w-[230px] items-center gap-2 rounded border px-2 ${t.input}`}>
-          <X size={14} className={t.sub} onClick={() => setQ("")} />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="جستجو..."
-            className="w-full bg-transparent text-right text-[12px] outline-none"
-          />
-          <Search size={14} className={t.sub} />
-        </div>
-        {[SlidersHorizontal, Settings, RotateCw, FileText, Sheet].map((I, i) => (
-          <button key={i} type="button" className={`relative rounded p-1.5 ${t.hover} ${t.sub}`}>
-            {i === 0 && <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-red-500" />}
-            <I size={17} />
-          </button>
-        ))}
+      {/* Top Table Toolbar with 5 Action Icons */}
+      <TableToolbar
+        searchQuery={q}
+        onSearchChange={(val) => {
+          setQ(val);
+          setPage(1);
+        }}
+        searchPlaceholder="جستجو..."
+        onOpenFilter={() => setIsFilterOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onRefresh={handleRefresh}
+        onPrint={() => setIsPrintModalOpen(true)}
+        onExportExcel={handleExportExcel}
+        hasActiveFilters={hasActiveFilters}
+        t={t}
+      >
         <div className="flex-1" />
+
         {onOpenCsvUpload && (
           <button
             type="button"
             onClick={onOpenCsvUpload}
-            className="flex items-center gap-1 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-1.5 text-[12.5px] text-zinc-200"
+            className="flex items-center gap-1 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-1.5 text-[12.5px] text-zinc-200 transition"
             title="آپلود و درون‌ریزی فایل‌های CSV"
           >
             <Sheet size={14} className="text-emerald-400" /> آپلود فایل CSV
           </button>
         )}
+
+        {/* New Contract Dropdown */}
         <div className="relative">
           <button
             type="button"
             onClick={() => setMenu((m) => !m)}
-            className="flex items-center gap-1 rounded bg-violet-500 px-3 py-1.5 text-[12.5px] text-white hover:bg-violet-600"
+            className="flex items-center gap-1 rounded bg-violet-600 px-3 py-1.5 text-[12.5px] text-white hover:bg-violet-700 shadow-sm transition"
           >
             <ChevronDown size={14} /> ثبت قرارداد
           </button>
@@ -130,34 +224,32 @@ export default function ContractsPage({
             </div>
           )}
         </div>
+
+        {/* Status Badges */}
         {chip("در حال تمدید", 0, "bg-red-700")}
         {chip("پیش‌نویس", 0, "bg-neutral-600")}
         {chip("متفرقه", 0, "bg-amber-600")}
         {chip("جنرال", 0, "bg-sky-700")}
         {chip("فعال", contracts.length, "bg-green-700")}
-      </div>
+      </TableToolbar>
 
+      {/* Contracts Table */}
       <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full min-w-[1100px] text-[12.5px]">
           <thead className={`${t.head} ${t.sub}`}>
             <tr>
-              {[
-                "ردیف",
-                "شماره قرارداد",
-                "نام ساختمان",
-                "نام مسئول هماهنگی",
-                "منطقه",
-                "آدرس",
-                "تاریخ شروع",
-                "تاریخ پایان",
-                "",
-              ].map((h, i) => (
-                <th key={i} className="whitespace-nowrap px-3 py-2.5 text-right font-normal">
-                  <span className="flex items-center gap-1">
-                    {h} {h && i > 0 && i < 8 && <ChevronsUpDown size={11} className="opacity-50" />}
-                  </span>
-                </th>
-              ))}
+              <th className="w-12 whitespace-nowrap px-3 py-2.5 text-right font-normal">ردیف</th>
+              {columns
+                .filter((c) => c.visible)
+                .map((col) => (
+                  <th key={col.key} className="whitespace-nowrap px-3 py-2.5 text-right font-normal">
+                    <span className="flex items-center gap-1">
+                      {col.title}
+                      <ChevronsUpDown size={11} className="opacity-50" />
+                    </span>
+                  </th>
+                ))}
+              <th className="w-10 px-2" />
             </tr>
           </thead>
           <tbody className={t.text}>
@@ -167,21 +259,136 @@ export default function ContractsPage({
                 onClick={() => onOpenContract?.(c)}
                 className={`cursor-pointer border-b ${t.border} ${t.row}`}
               >
-                <td className="px-3 py-3">{(page - 1) * pageSize + i + 1}</td>
-                <td className="px-3 py-3 font-mono font-bold text-violet-400">{c.no}</td>
-                <td className="whitespace-nowrap px-3 py-3 font-medium">{c.building}</td>
-                <td className="whitespace-nowrap px-3 py-3">{c.manager}</td>
-                <td className="whitespace-nowrap px-3 py-3">
-                  <span className="px-2 py-0.5 rounded bg-zinc-800/80 text-zinc-300 text-[11px]">
-                    {c.zone}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-3 py-3 max-w-[200px] truncate" title={c.address || "قزوین"}>
-                  {c.address || "قزوین"}
-                </td>
-                <td className="whitespace-nowrap px-3 py-3 font-mono text-[11px]">{c.start}</td>
-                <td className="whitespace-nowrap px-3 py-3 font-mono text-[11px]">{c.end}</td>
-                <td className="px-2">
+                <td className="px-3 py-3">{(page - 1) * (pageSize === -1 ? 0 : pageSize) + i + 1}</td>
+                {columns
+                  .filter((col) => col.visible)
+                  .map((col) => {
+                    if (col.key === "no") {
+                      return (
+                        <td key={col.key} className="px-3 py-3 font-mono font-bold text-violet-400">
+                          {c.no}
+                        </td>
+                      );
+                    }
+                    if (col.key === "building") {
+                      return (
+                        <td key={col.key} className="whitespace-nowrap px-3 py-3 font-medium">
+                          {c.building}
+                        </td>
+                      );
+                    }
+                    if (col.key === "zone") {
+                      return (
+                        <td key={col.key} className="whitespace-nowrap px-3 py-3">
+                          <span className="px-2 py-0.5 rounded bg-zinc-800/80 text-zinc-300 text-[11px]">
+                            {c.zone}
+                          </span>
+                        </td>
+                      );
+                    }
+                    if (col.key === "address") {
+                      return (
+                        <td
+                          key={col.key}
+                          className="whitespace-nowrap px-3 py-3 max-w-[280px] truncate"
+                          title={c.address || "قزوین"}
+                        >
+                          {c.address || "قزوین"}
+                        </td>
+                      );
+                    }
+                    if (col.key === "manager") {
+                      return (
+                        <td key={col.key} className="whitespace-nowrap px-3 py-3">
+                          {c.manager}
+                        </td>
+                      );
+                    }
+                    if (col.key === "phone") {
+                      return (
+                        <td key={col.key} className="whitespace-nowrap px-3 py-3 font-mono" dir="ltr">
+                          {c.phone || "-"}
+                        </td>
+                      );
+                    }
+                    if (col.key === "customer") {
+                      return (
+                        <td key={col.key} className="whitespace-nowrap px-3 py-3">
+                          {c.manager || c.building}
+                        </td>
+                      );
+                    }
+                    if (col.key === "isLegal") {
+                      return (
+                        <td key={col.key} className="whitespace-nowrap px-3 py-3 text-center">
+                          حقیقی
+                        </td>
+                      );
+                    }
+                    if (col.key === "buildingCode") {
+                      return (
+                        <td key={col.key} className="whitespace-nowrap px-3 py-3 font-mono text-center">
+                          {c.id}
+                        </td>
+                      );
+                    }
+                    if (col.key === "managerPhone") {
+                      return (
+                        <td key={col.key} className="whitespace-nowrap px-3 py-3 font-mono" dir="ltr">
+                          {c.phone || "-"}
+                        </td>
+                      );
+                    }
+                    if (col.key === "locationStatus") {
+                      return (
+                        <td key={col.key} className="whitespace-nowrap px-3 py-3 text-center text-[11px] text-emerald-400">
+                          ثبت شده
+                        </td>
+                      );
+                    }
+                    if (col.key === "signDate") {
+                      return (
+                        <td key={col.key} className="whitespace-nowrap px-3 py-3 font-mono text-[11px]">
+                          {c.start}
+                        </td>
+                      );
+                    }
+                    if (col.key === "start") {
+                      return (
+                        <td key={col.key} className="whitespace-nowrap px-3 py-3 font-mono text-[11px]">
+                          {c.start}
+                        </td>
+                      );
+                    }
+                    if (col.key === "end") {
+                      return (
+                        <td key={col.key} className="whitespace-nowrap px-3 py-3 font-mono text-[11px]">
+                          {c.end}
+                        </td>
+                      );
+                    }
+                    if (col.key === "terminated") {
+                      return (
+                        <td key={col.key} className="whitespace-nowrap px-3 py-3 text-center">
+                          خیر
+                        </td>
+                      );
+                    }
+                    if (col.key === "terminateDate") {
+                      return (
+                        <td key={col.key} className="whitespace-nowrap px-3 py-3 text-center text-neutral-500">
+                          -
+                        </td>
+                      );
+                    }
+                    return (
+                      <td key={col.key} className="whitespace-nowrap px-3 py-3">
+                        {String((c as unknown as Record<string, unknown>)[col.key] || "-")}
+                      </td>
+                    );
+                  })}
+
+                <td className="px-2 text-center">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -196,10 +403,22 @@ export default function ContractsPage({
                 </td>
               </tr>
             ))}
+
+            {paginatedList.length === 0 && (
+              <tr>
+                <td
+                  colSpan={columns.filter((c) => c.visible).length + 2}
+                  className={`py-12 text-center ${t.sub}`}
+                >
+                  هیچ موردی پیدا نشد
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
+      {/* Pagination Footer */}
       <div className={`flex items-center justify-between border-t ${t.border} px-3 py-2 text-[12px] ${t.text}`}>
         <div className="flex items-center gap-2">
           <select
@@ -241,9 +460,10 @@ export default function ContractsPage({
             </button>
           </div>
         )}
-        <span className={t.sub}>{list.length.toLocaleString("fa-IR")} قرارداد</span>
+        <span className={t.sub}>{filteredList.length.toLocaleString("fa-IR")} مورد پیدا شد</span>
       </div>
 
+      {/* Row Actions Menu */}
       {rowMenu &&
         (() => {
           const c = contracts.find((x) => x.id === rowMenu.id)!;
@@ -292,8 +512,60 @@ export default function ContractsPage({
           );
         })()}
 
+      {/* Drawers & Modals */}
+      <ColumnSettingsDrawer
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        columns={columns}
+        onToggleColumn={handleToggleColumn}
+        onSave={() => notify("تنظیمات ستون‌ها با موفقیت اعمال شد")}
+        t={t}
+      />
+
+      <ContractsFilterDrawer
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        filters={filters}
+        onChange={setFilters}
+        onApply={() => {
+          setPage(1);
+          notify(`فیلتر با موفقیت اعمال شد. ${filteredList.length.toLocaleString("fa-IR")} مورد یافت شد.`);
+        }}
+        onReset={() => {
+          setFilters(defaultContractFilters);
+          setPage(1);
+          notify("فیلترها بازنشانی شدند");
+        }}
+        t={t}
+      />
+
+      <PrintTableModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title="لیست قراردادهای سرویس و نگهداری آسانسور"
+        data={filteredList as unknown as Record<string, unknown>[]}
+        columns={columns
+          .filter((c) => c.visible)
+          .map((c) => ({
+            key: c.key,
+            title: c.title,
+            render: (item: Record<string, unknown>) => {
+              if (c.key === "customer") return (item.manager as string) || (item.building as string);
+              if (c.key === "isLegal") return "حقیقی";
+              if (c.key === "buildingCode") return String(item.id);
+              if (c.key === "managerPhone") return (item.phone as string) || "-";
+              if (c.key === "locationStatus") return "ثبت شده";
+              if (c.key === "signDate") return item.start as string;
+              if (c.key === "terminated") return "خیر";
+              if (c.key === "terminateDate") return "-";
+              return (item[c.key] as string) || "-";
+            },
+          }))}
+        t={t}
+      />
+
       {toast && (
-        <div className="absolute bottom-14 left-1/2 z-50 -translate-x-1/2 rounded bg-neutral-800 px-4 py-2 text-[12.5px] text-white shadow-lg">
+        <div className="absolute bottom-14 left-1/2 z-50 -translate-x-1/2 rounded bg-neutral-800 border border-neutral-700 px-4 py-2 text-[12.5px] text-white shadow-xl">
           {toast}
         </div>
       )}

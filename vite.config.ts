@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "0.0.0.0",
     port: 3000,
+    // اجازه دسترسی به همه هاست‌ها (برای پیش‌نمایش در محیط‌های ابری/تونل)
+    allowedHosts: true,
   },
   plugins: [
     react(),

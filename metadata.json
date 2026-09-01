@@ -1,0 +1,8 @@
+{
+  "name": "Remix tlift 1-tech-service-hub",
+  "description": "Imported from GitHub: mohsen1363162/customer-tech-service-hub",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

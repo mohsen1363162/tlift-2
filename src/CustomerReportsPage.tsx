@@ -94,7 +94,7 @@ export default function CustomerReportsPage({
   const [maxDebt, setMaxDebt] = useState("");
   const [minLastPay, setMinLastPay] = useState("");
   const [maxLastPay, setMaxLastPay] = useState("");
-  const [paymentStatusMode, setPaymentStatusMode] = useState<"داشته" | "نداشته" | "در" | "دستی">("داشته");
+  const [paymentStatusMode, setPaymentStatusMode] = useState<"پرداختی" | "داشته" | "نداشته" | "در" | "دستی">("داشته");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 

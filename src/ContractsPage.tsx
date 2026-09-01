@@ -208,7 +208,7 @@ export default function ContractsPage({
               setPageSize(Number(e.target.value));
               setPage(1);
             }}
-            className={`rounded border px-2 py-1 outline-none text-xs ${t.border} ${t.bg} ${t.sub}`}
+            className={`rounded border px-2 py-1 outline-none text-xs ${t.border} ${t.panel} ${t.sub}`}
           >
             <option value={20}>20 / صفحه</option>
             <option value={50}>50 / صفحه</option>

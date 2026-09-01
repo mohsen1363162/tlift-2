@@ -22,7 +22,7 @@ import {
   Check,
   X,
 } from "lucide-react";
-import { Theme } from "./data";
+import type { Theme } from "./theme";
 import { appStore, useContracts, useCustomers } from "./store";
 import {
   parseContractsCsv,
@@ -279,7 +279,7 @@ export default function CsvUploadPage({
   };
 
   return (
-    <div className={`min-h-full p-4 md:p-6 pb-28 space-y-6 ${t.bg} ${t.text}`} dir="rtl">
+    <div className={`min-h-full p-4 md:p-6 pb-28 space-y-6 ${t.body} ${t.text}`} dir="rtl">
       {/* Dataset Selection Tabs */}
       <div className={`p-2 rounded-2xl border ${t.border} ${t.card} flex flex-wrap items-center justify-between gap-3 shadow-sm`}>
         <div className="flex items-center gap-2">
@@ -637,7 +637,7 @@ export default function CsvUploadPage({
                 setPage(1);
               }}
               placeholder={`جستجو در پیش‌نمایش ${activeDataset === "contracts" ? "قراردادها" : "مشتریان"}...`}
-              className={`w-full pr-9 pl-3 py-2 text-xs rounded-lg border outline-none ${t.border} ${t.bg} focus:border-violet-500`}
+              className={`w-full pr-9 pl-3 py-2 text-xs rounded-lg border outline-none ${t.border} ${t.panel} focus:border-violet-500`}
             />
           </div>
 
@@ -847,7 +847,7 @@ export default function CsvUploadPage({
                   setPageSize(Number(e.target.value));
                   setPage(1);
                 }}
-                className={`rounded border px-2 py-1 outline-none text-xs ${t.border} ${t.bg} ${t.sub}`}
+                className={`rounded border px-2 py-1 outline-none text-xs ${t.border} ${t.panel} ${t.sub}`}
               >
                 <option value={20}>20 در صفحه</option>
                 <option value={50}>50 در صفحه</option>
@@ -901,7 +901,7 @@ export default function CsvUploadPage({
             }}
             rows={16}
             dir="ltr"
-            className={`w-full p-4 font-mono text-xs rounded-xl border outline-none resize-y ${t.border} ${t.bg} focus:border-violet-500`}
+            className={`w-full p-4 font-mono text-xs rounded-xl border outline-none resize-y ${t.border} ${t.panel} focus:border-violet-500`}
             placeholder={
               activeDataset === "contracts"
                 ? "شماره قرارداد,مشتری,حقوقی,شماره تماس,شماره اشتراک ساختمان,نام ساختمان,نام مسئول هماهنگی,شماره همراه مسئول هماهنگی,وضعیت موقعیت مکانی,منطقه,آدرس,تاریخ عقد قرارداد,تاریخ شروع,تاریخ پایان,فسخ شده,تاریخ فسخ"

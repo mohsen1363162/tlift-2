@@ -21,7 +21,7 @@ import {
   SquareArrowOutUpRight,
 } from "lucide-react";
 import type { Theme } from "./theme";
-import { Customer, provinces, cities } from "./data";
+import { Contract, Customer, provinces, cities } from "./data";
 import { useCustomers, appStore } from "./store";
 
 const PAGE = 12;

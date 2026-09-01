@@ -184,6 +184,7 @@ if (!isCsvSeeded) {
           buildings: 1,
           active: !row.isCanceled,
           suspended: false,
+          sms: true,
           phone: row.phone || row.coordinatorPhone,
         });
       }
@@ -397,6 +398,7 @@ export const appStore = {
           buildings: 1,
           active: !row.isCanceled,
           suspended: false,
+          sms: true,
           phone: row.phone || row.coordinatorPhone,
         });
         customersAdded++;

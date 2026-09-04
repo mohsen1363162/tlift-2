@@ -47,6 +47,8 @@ import { Contract } from "./data";
 import ServiceForm from "./ServiceForm";
 import ServiceReportView from "./components/ServiceReportView";
 import { ContractPaymentsView } from "./components/ContractPaymentsView";
+import ContractBreakdownsView from "./components/ContractBreakdownsView";
+import ContractServicesListView from "./components/ContractServicesListView";
 import { Field, inputCls, SearchSelect, DatePicker } from "./ui";
 import { appStore, useContractDetails, MonthService, PaymentRecord, Invoice } from "./store";
 
@@ -61,7 +63,7 @@ export default function ContractView({
 }: {
   t: Theme;
   contract: Contract;
-  initialSubView?: "overview" | "payments";
+  initialSubView?: "overview" | "payments" | "breakdowns" | "services";
   onOpenServiceReport?: (monthService: MonthService, contract: Contract) => void;
 }) {
   const [toast, setToast] = useState<string | null>(null);
@@ -70,10 +72,11 @@ export default function ContractView({
     setTimeout(() => setToast(null), 2500);
   };
 
-  const [subView, setSubView] = useState<"overview" | "payments">(initialSubView);
+  const [subView, setSubView] = useState<"overview" | "payments" | "breakdowns" | "services">(initialSubView);
 
   const details = useContractDetails(contract.id);
   const { months, payments, invoices } = details;
+  const breakdowns = details.breakdowns || [];
 
   // Selected Month State for Summary Card
   const [selectedMonthId, setSelectedMonthId] = useState<number>(() => {
@@ -205,6 +208,29 @@ export default function ContractView({
         contract={contract}
         onBack={() => setSubView("overview")}
         onShowToast={notify}
+      />
+    );
+  }
+
+  if (subView === "breakdowns") {
+    return (
+      <ContractBreakdownsView
+        t={t}
+        contract={contract}
+        onBack={() => setSubView("overview")}
+        onShowToast={notify}
+      />
+    );
+  }
+
+  if (subView === "services") {
+    return (
+      <ContractServicesListView
+        t={t}
+        contract={contract}
+        onBack={() => setSubView("overview")}
+        onShowToast={notify}
+        onOpenServiceReport={(month) => setServiceReportModalMonth(month)}
       />
     );
   }
@@ -375,8 +401,30 @@ export default function ContractView({
           </div>
 
           {/* Center: Status count */}
-          <div className="text-neutral-400 font-normal">
-            {fa(months.length)} سرویس برنامه ریزی شده / بدون خرابی
+          <div className="flex items-center gap-1.5 text-neutral-400 font-normal text-[12px]">
+            <button
+              type="button"
+              onClick={() => setSubView("services")}
+              className="hover:text-purple-300 hover:underline transition cursor-pointer"
+              title="مشاهده صفحه لیست سرویس‌ها (سرویس شده، سرویس نشده و...)"
+            >
+              {fa(months.length)} سرویس برنامه ریزی شده
+            </button>
+            <span>/</span>
+            <button
+              type="button"
+              onClick={() => setSubView("breakdowns")}
+              className="hover:text-amber-300 hover:underline transition cursor-pointer"
+              title="مشاهده لیست خرابی‌های این دستگاه و قرارداد"
+            >
+              {breakdowns.length > 0 ? (
+                <span className="font-semibold text-amber-400 font-mono">
+                  {fa(breakdowns.length)} خرابی
+                </span>
+              ) : (
+                "بدون خرابی"
+              )}
+            </button>
           </div>
 
           {/* Left: Device identifier & tools */}
@@ -402,20 +450,33 @@ export default function ContractView({
               key={label}
               type="button"
               onClick={() => {
-                if (label === "سرویس ها" || label === "سرویس و تعمیر") {
-                  setServiceReportModalMonth(selectedMonthObj || months[0]);
+                if (label === "خرابی ها") {
+                  setSubView("breakdowns");
+                } else if (label === "سرویس ها" || label === "سرویس و تعمیر") {
+                  setSubView("services");
                 } else {
                   notify(label);
                 }
               }}
               className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] transition ${
-                label === "سرویس ها"
+                label === "خرابی ها"
+                  ? "border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                  : label === "سرویس ها"
                   ? "border-purple-500/50 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20"
                   : `${t.border} ${t.text} ${t.hover}`
               }`}
             >
               <span>{label}</span>
-              <I size={13} className={label === "سرویس ها" ? "text-purple-400" : t.sub} />
+              <I
+                size={13}
+                className={
+                  label === "خرابی ها"
+                    ? "text-amber-400"
+                    : label === "سرویس ها"
+                    ? "text-purple-400"
+                    : t.sub
+                }
+              />
             </button>
           ))}
           <button

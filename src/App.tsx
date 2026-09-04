@@ -69,7 +69,7 @@ type Tab = {
   contract?: Contract;
   monthService?: MonthService;
   csvType?: "contracts" | "customers";
-  initialSubView?: "overview" | "payments";
+  initialSubView?: "overview" | "payments" | "breakdowns" | "services";
 };
 
 let uid = 100;
@@ -183,14 +183,21 @@ export default function App() {
 
   const openContractView = (
     c: Contract,
-    initialSubView: "overview" | "payments" = "overview"
+    initialSubView: "overview" | "payments" | "breakdowns" | "services" = "overview"
   ) => {
     const id = ++uid;
     setTabs((s) => [
       ...s,
       {
         id,
-        title: initialSubView === "payments" ? `پرداختی های قرارداد ${c.no}` : "مشاهده ی قرارداد",
+        title:
+          initialSubView === "payments"
+            ? `پرداختی های قرارداد ${c.no}`
+            : initialSubView === "services"
+            ? `سرویس‌های قرارداد ${c.no}`
+            : initialSubView === "breakdowns"
+            ? `خرابی‌های قرارداد ${c.no}`
+            : "مشاهده ی قرارداد",
         kind: "contractView",
         contract: c,
         initialSubView,

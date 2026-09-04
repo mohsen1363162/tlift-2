@@ -83,10 +83,36 @@ export type Invoice = {
   wage: number;
 };
 
+export type BreakdownStatus =
+  | "انجام شده"
+  | "انجام نشده"
+  | "باطل شده"
+  | "دارای مغایرت"
+  | "در انتظار تایید";
+
+export type BreakdownItem = {
+  id: string;
+  rowNo: number;
+  status: BreakdownStatus;
+  technicians: string[];
+  declareDate: string;
+  declareTime?: string;
+  executionStatus: string;
+  resolveDate?: string;
+  delayOrAdvance?: string;
+  declaredBy: string;
+  contactPhone?: string;
+  partsAmount: number;
+  report: string;
+  description: string;
+  createdAt: number;
+};
+
 export type ContractDetails = {
   months: MonthService[];
   payments: PaymentRecord[];
   invoices: Invoice[];
+  breakdowns?: BreakdownItem[];
 };
 
 const DEFAULT_MONTHS_NAMES = [
@@ -1148,6 +1174,68 @@ export const appStore = {
     contractDetailsMap[contractId] = {
       ...details,
       months: [...details.months, newMonth],
+    };
+
+    saveStorage("tlift_contract_details", contractDetailsMap);
+    notifyListeners();
+  },
+
+  // CONTRACT BREAKDOWNS (ثبت و مدیریت خرابی‌ها)
+  getContractBreakdowns: (contractId: number): BreakdownItem[] => {
+    const details = appStore.getContractDetails(contractId);
+    return details.breakdowns || [];
+  },
+
+  addContractBreakdown: (
+    contractId: number,
+    breakdown: Omit<BreakdownItem, "id" | "rowNo" | "createdAt">
+  ): BreakdownItem => {
+    const details = appStore.getContractDetails(contractId);
+    const existing = details.breakdowns || [];
+    const newBreakdown: BreakdownItem = {
+      ...breakdown,
+      id: `brk-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      rowNo: existing.length + 1,
+      createdAt: Date.now(),
+    };
+
+    contractDetailsMap[contractId] = {
+      ...details,
+      breakdowns: [newBreakdown, ...existing],
+    };
+
+    saveStorage("tlift_contract_details", contractDetailsMap);
+    notifyListeners();
+    return newBreakdown;
+  },
+
+  updateContractBreakdown: (
+    contractId: number,
+    breakdownId: string,
+    updates: Partial<BreakdownItem>
+  ) => {
+    const details = appStore.getContractDetails(contractId);
+    if (!details.breakdowns) return;
+
+    contractDetailsMap[contractId] = {
+      ...details,
+      breakdowns: details.breakdowns.map((b) => (b.id === breakdownId ? { ...b, ...updates } : b)),
+    };
+
+    saveStorage("tlift_contract_details", contractDetailsMap);
+    notifyListeners();
+  },
+
+  deleteContractBreakdown: (contractId: number, breakdownId: string) => {
+    const details = appStore.getContractDetails(contractId);
+    if (!details.breakdowns) return;
+
+    const remaining = details.breakdowns.filter((b) => b.id !== breakdownId);
+    const reindexed = remaining.map((b, idx) => ({ ...b, rowNo: remaining.length - idx }));
+
+    contractDetailsMap[contractId] = {
+      ...details,
+      breakdowns: reindexed,
     };
 
     saveStorage("tlift_contract_details", contractDetailsMap);

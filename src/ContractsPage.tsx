@@ -11,6 +11,8 @@ import {
   FileSignature,
   SquareArrowOutUpRight,
   Sheet,
+  Wrench,
+  AlertTriangle,
 } from "lucide-react";
 import type { Theme } from "./theme";
 import { Contract } from "./data";
@@ -52,7 +54,7 @@ export default function ContractsPage({
   t: Theme;
   contracts: Contract[];
   onNewContract: (kind: string) => void;
-  onOpenContract?: (c: Contract) => void;
+  onOpenContract?: (c: Contract, subView?: "overview" | "payments" | "breakdowns" | "services") => void;
   onOpenCsvUpload?: () => void;
 }) {
   const [q, setQ] = useState("");

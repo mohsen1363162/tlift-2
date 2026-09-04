@@ -18,6 +18,8 @@ export type ServicePartItem = {
   price: number;
 };
 
+export type ServiceChecklistStatus = "ok" | "fault" | "na";
+
 export type MonthService = {
   id: number;
   m: string;
@@ -35,6 +37,7 @@ export type MonthService = {
   doneBy?: string;
   report?: string;
   reminder?: string;
+  customerFollowup?: string;
   faultsCount?: number;
   faultsList?: string[];
   partsAmount?: number;
@@ -42,6 +45,13 @@ export type MonthService = {
   wage?: number;
   trip?: number;
   discount?: number;
+  tax?: number;
+  serviceNo?: string;
+  plannedDate?: string;
+  deviceNo?: string;
+  buildingName?: string;
+  checklistResults?: Record<number, ServiceChecklistStatus>;
+  attachments?: string[];
 };
 
 export type PaymentRecord = {
@@ -52,6 +62,16 @@ export type PaymentRecord = {
   method: string;
   ref?: string;
   monthId?: number;
+  customerName?: string;
+  paymentType?: string;
+  forReason?: string;
+  regDate?: string;
+  buildingName?: string;
+  buildingAddress?: string;
+  notes?: string;
+  bank?: string;
+  accountNo?: string;
+  installmentNo?: number;
 };
 
 export type Invoice = {
@@ -232,6 +252,65 @@ export const INITIAL_ZONES: ZoneItem[] = [
   { id: 36, name: "سالن ورزشی معلولین", city: "قزوین", province: "قزوین" },
   { id: 37, name: "امام حسن", city: "قزوین", province: "قزوین" },
   { id: 38, name: "امام سجاد", city: "قزوین", province: "قزوین" },
+];
+
+export type ChecklistItem = {
+  id: number;
+  rowNo: number;
+  deviceType: string; // آسانسور، پله برقی، رمپ
+  category: string; // طبقات، چاله آسانسور، داخل کابین، روی کابین، داخل چاه، موتور خانه
+  question: string;
+  period: string; // ماهیانه
+};
+
+export const INITIAL_CHECKLIST_CATEGORIES: string[] = [
+  "طبقات",
+  "چاله آسانسور",
+  "داخل کابین",
+  "روی کابین",
+  "داخل چاه",
+  "موتور خانه",
+];
+
+export const INITIAL_CHECKLIST: ChecklistItem[] = [
+  { id: 1, rowNo: 1, deviceType: "آسانسور", category: "طبقات", question: "اطمینان از پل نبودن کنتاکت دربهای طبقه و در کابین", period: "ماهیانه" },
+  { id: 2, rowNo: 2, deviceType: "آسانسور", category: "طبقات", question: "بازدید لته درب تمام اتوماتیک / کفشکها / مکانیزم", period: "ماهیانه" },
+  { id: 3, rowNo: 3, deviceType: "آسانسور", category: "طبقات", question: "بررسی و بازدید عملکرد درب لولایی / دوشاخ کنتاکت", period: "ماهیانه" },
+  { id: 4, rowNo: 4, deviceType: "آسانسور", category: "طبقات", question: "بررسی وبازدید عملکرد شستی طبقات", period: "ماهیانه" },
+  { id: 5, rowNo: 5, deviceType: "آسانسور", category: "طبقات", question: "بررسی و بازدید شیشه و قاب شیشه ها/ فنر درب ها", period: "ماهیانه" },
+  { id: 6, rowNo: 6, deviceType: "آسانسور", category: "طبقات", question: "بررسی و بازدید قفل و دیکتاتورها", period: "ماهیانه" },
+  { id: 7, rowNo: 7, deviceType: "آسانسور", category: "چاله آسانسور", question: "بازدید لرزه گیرهای کابین / کفشکهای کابین", period: "ماهیانه" },
+  { id: 8, rowNo: 8, deviceType: "آسانسور", category: "چاله آسانسور", question: "بررسی و تست عملکرد استپ ته چاه/ کلید تبدیل", period: "ماهیانه" },
+  { id: 9, rowNo: 9, deviceType: "آسانسور", category: "چاله آسانسور", question: "بررسی و بازدید چراغهای تونلی / کابلها", period: "ماهیانه" },
+  { id: 10, rowNo: 10, deviceType: "آسانسور", category: "چاله آسانسور", question: "بررسی و بازدید لیمیتها / اتصالات", period: "ماهیانه" },
+  { id: 11, rowNo: 11, deviceType: "آسانسور", category: "چاله آسانسور", question: "بازدید بافرها/فلکه گاورنر چاه/ میکروسوئیچ ها", period: "ماهیانه" },
+  { id: 12, rowNo: 12, deviceType: "آسانسور", category: "چاله آسانسور", question: "بازدید نظافت کف چاهک", period: "ماهیانه" },
+  { id: 13, rowNo: 13, deviceType: "آسانسور", category: "داخل کابین", question: "بررسی و بازدید عملکرد پوش باتن ها شستی کابین", period: "ماهیانه" },
+  { id: 14, rowNo: 14, deviceType: "آسانسور", category: "داخل کابین", question: "بازدید عملکرد چراغ اضطراری / زنگ", period: "ماهیانه" },
+  { id: 15, rowNo: 15, deviceType: "آسانسور", category: "داخل کابین", question: "بازدید عملکرد صحیح درب داخل / لته ها / کفشک ها", period: "ماهیانه" },
+  { id: 16, rowNo: 16, deviceType: "آسانسور", category: "داخل کابین", question: "بررسی آینه / دستگیره / پاخور", period: "ماهیانه" },
+  { id: 17, rowNo: 17, deviceType: "آسانسور", category: "داخل کابین", question: "بازدید عملکرد روشنایی / هالوژن / فن", period: "ماهیانه" },
+  { id: 18, rowNo: 18, deviceType: "آسانسور", category: "داخل کابین", question: "بررسی نظافت کابین / سقف کاذب / سیل درب", period: "ماهیانه" },
+  { id: 19, rowNo: 19, deviceType: "آسانسور", category: "روی کابین", question: "بازدید عملکرد درب داخل کابین / برد / قرقره / موتور", period: "ماهیانه" },
+  { id: 20, rowNo: 20, deviceType: "آسانسور", category: "روی کابین", question: "بازدید عملکرد مگنت درباز کن / برقی / مکانیکی", period: "ماهیانه" },
+  { id: 21, rowNo: 21, deviceType: "آسانسور", category: "روی کابین", question: "بازدید ریویزیون / سیم کشی ها / اورلود", period: "ماهیانه" },
+  { id: 22, rowNo: 22, deviceType: "آسانسور", category: "روی کابین", question: "بازدید و تنظیم پاراشوت / عملکرد صحیح / میکروسوئیچ", period: "ماهیانه" },
+  { id: 23, rowNo: 23, deviceType: "آسانسور", category: "روی کابین", question: "بازدید لرزه گیرهای کابین / پیچ و مهره و اتصالات یوک", period: "ماهیانه" },
+  { id: 24, rowNo: 24, deviceType: "آسانسور", category: "روی کابین", question: "بازدید آهنرباهای Level و ایست طبقات / فن کابین", period: "ماهیانه" },
+  { id: 25, rowNo: 25, deviceType: "آسانسور", category: "روی کابین", question: "بازدید کفشک های روی کابین ، وزنه / روغندان / سنسورها", period: "ماهیانه" },
+  { id: 26, rowNo: 26, deviceType: "آسانسور", category: "داخل چاه", question: "بازدید سلامت داکت ها / سیم کشی چاه / بستها", period: "ماهیانه" },
+  { id: 27, rowNo: 27, deviceType: "آسانسور", category: "داخل چاه", question: "روشنایی چاه / چراغ تونلی / روغن روغندان ها", period: "ماهیانه" },
+  { id: 28, rowNo: 28, deviceType: "آسانسور", category: "داخل چاه", question: "بازدید کشش و بافت بکسل ها / کرپی ها / قلاب ها", period: "ماهیانه" },
+  { id: 29, rowNo: 29, deviceType: "آسانسور", category: "داخل چاه", question: "بازدید اتصالات ریل ها / تمیزی / بتن سقف", period: "ماهیانه" },
+  { id: 30, rowNo: 30, deviceType: "آسانسور", category: "داخل چاه", question: "بازدید تمیزی روی کابین و ریویزیون / درب کابین", period: "ماهیانه" },
+  { id: 31, rowNo: 31, deviceType: "آسانسور", category: "موتور خانه", question: "بررسی عملکرد صحیح کنترل بار و فاز / مدار ایمنی", period: "ماهیانه" },
+  { id: 32, rowNo: 32, deviceType: "آسانسور", category: "موتور خانه", question: "بررسی گاورنر بالا / میکروسوئیچ / عملکرد صحیح", period: "ماهیانه" },
+  { id: 33, rowNo: 33, deviceType: "آسانسور", category: "موتور خانه", question: "بازدید تابلو فرمان / سلامت قطعات / تمیزی", period: "ماهیانه" },
+  { id: 34, rowNo: 34, deviceType: "آسانسور", category: "موتور خانه", question: "بازدید تابلو سه فاز / کلید 0 و 1 / فیوزها / چراغ سیگنال", period: "ماهیانه" },
+  { id: 35, rowNo: 35, deviceType: "آسانسور", category: "موتور خانه", question: "بازدید براده ریزی فلکه اصلی / هرزگرد", period: "ماهیانه" },
+  { id: 36, rowNo: 36, deviceType: "آسانسور", category: "موتور خانه", question: "بازدید مگنت ترمز / فن موتور / روغن ریزی / اینکودر", period: "ماهیانه" },
+  { id: 37, rowNo: 37, deviceType: "آسانسور", category: "موتور خانه", question: "بازدید موتور / گیربکس / روغن گیربکس / تراز بودن", period: "ماهیانه" },
+  { id: 38, rowNo: 38, deviceType: "آسانسور", category: "موتور خانه", question: "بررسی و بازدید تمیزی سکو و موتور خانه / روشنایی / تهویه", period: "ماهیانه" },
 ];
 
 const INITIAL_SCHEDULED_SERVICES: ScheduledService[] = [
@@ -527,6 +606,8 @@ let staff: Staff[] = loadStorage<Staff[]>("tlift_staff", initialStaff);
 let marketingItems: MarketingItem[] = loadStorage<MarketingItem[]>("tlift_marketing_items", INITIAL_MARKETING_ITEMS);
 let scheduledServices: ScheduledService[] = loadStorage<ScheduledService[]>("tlift_scheduled_services", INITIAL_SCHEDULED_SERVICES);
 let zones: ZoneItem[] = loadStorage<ZoneItem[]>("tlift_zones_v2", INITIAL_ZONES);
+let checklistItems: ChecklistItem[] = loadStorage<ChecklistItem[]>("tlift_checklist_v1", INITIAL_CHECKLIST);
+let checklistCategories: string[] = loadStorage<string[]>("tlift_checklist_categories_v1", INITIAL_CHECKLIST_CATEGORIES);
 
 // Auto-seed CSV contracts if only default demo contracts are present
 const isCsvSeeded = loadStorage<boolean>("tlift_csv_seeded_v1", false);
@@ -782,12 +863,94 @@ export const appStore = {
 
   // CONTRACT DETAILS (Months, Services, Payments, Invoices)
   getContractDetails: (contractId: number): ContractDetails => {
+    const contract = contracts.find((c) => c.id === contractId);
+    const isContract5475 = contract?.no === "5475";
+
     if (!contractDetailsMap[contractId]) {
-      contractDetailsMap[contractId] = {
-        months: generateInitialMonths(1405, 8500000),
-        payments: [],
-        invoices: [],
-      };
+      if (isContract5475) {
+        // Exact data matching user's screenshot sshot-2.png and sshot-4.png
+        const defaultChecks: Record<number, ServiceChecklistStatus> = {};
+        for (let c = 1; c <= 38; c++) defaultChecks[c] = "ok";
+
+        const monthlyAmt = 5500000;
+        const initialMonths = generateInitialMonths(1405, monthlyAmt).map((m, idx) => ({
+          ...m,
+          amount: monthlyAmt,
+          paid: true,
+          done: idx < 4,
+          paidDate: "1405/06/13",
+          paidMethod: "نقد",
+          paidRef: "CSH-5475-01",
+          serviceNo: idx === 0 ? "774917" : `7749${18 + idx}`,
+          plannedDate: idx === 0 ? "1405/03/26" : `1405/0${4 + idx}/26`,
+          date: idx === 0 ? "1405/03/28" : idx < 4 ? `1405/0${4 + idx}/28` : undefined,
+          report: idx === 0 ? "سرویس آسانسور خرداد 1405انجام شد" : `سرویس آسانسور ${m.m} ${m.y} انجام شد`,
+          techs: [
+            "محسن امامی برسری",
+            "مرتضی قاسمعلی",
+            "محمد حسن رحیمی زاده",
+            "بهمن کشاورز",
+            "میثم سهرابی",
+            "مجتبی فرهمند",
+          ],
+          doneBy: "محسن امامی برسری",
+          buildingName: "حسینی فر چهاراه پادگان",
+          deviceNo: "1",
+          reminder: "-",
+          customerFollowup: "-",
+          wage: 0,
+          trip: 0,
+          partsAmount: 0,
+          discount: 0,
+          tax: 0,
+          checklistResults: defaultChecks,
+        }));
+        contractDetailsMap[contractId] = {
+          months: initialMonths,
+          payments: [
+            {
+              id: 1,
+              title: "پرداخت نقدی قرارداد",
+              date: "13 شهریور 1405",
+              regDate: "13 شهریور 1405",
+              amount: 66000000,
+              method: "نقد",
+              paymentType: "نقد",
+              forReason: "قرارداد سرویس و نگهداری بشماره : 5475",
+              customerName: "* حسینی فر",
+              buildingName: "حسینی فر چهاراه پادگان",
+              buildingAddress: "قزوین چهار راه پادگان نبش کوچه متانت ساختمان آریامهر",
+              ref: "CSH-5475-01",
+            },
+          ],
+          invoices: [],
+        };
+      } else {
+        contractDetailsMap[contractId] = {
+          months: generateInitialMonths(1405, 8500000),
+          payments: [],
+          invoices: [],
+        };
+      }
+      saveStorage("tlift_contract_details", contractDetailsMap);
+    } else if (isContract5475 && contractDetailsMap[contractId].payments.length === 0) {
+      // Ensure contract 5475 has the payment from sshot-2.png
+      contractDetailsMap[contractId].payments = [
+        {
+          id: 1,
+          title: "پرداخت نقدی قرارداد",
+          date: "13 شهریور 1405",
+          regDate: "13 شهریور 1405",
+          amount: 66000000,
+          method: "نقد",
+          paymentType: "نقد",
+          forReason: "قرارداد سرویس و نگهداری بشماره : 5475",
+          customerName: "* حسینی فر",
+          buildingName: "حسینی فر چهاراه پادگان",
+          buildingAddress: "قزوین چهار راه پادگان نبش کوچه متانت ساختمان آریامهر",
+          ref: "CSH-5475-01",
+        },
+      ];
       saveStorage("tlift_contract_details", contractDetailsMap);
     }
     return contractDetailsMap[contractId];
@@ -927,6 +1090,44 @@ export const appStore = {
       payments: updatedPayments,
     };
 
+    saveStorage("tlift_contract_details", contractDetailsMap);
+    notifyListeners();
+  },
+
+  updatePayment: (
+    contractId: number,
+    paymentId: number,
+    patch: Partial<PaymentRecord>
+  ) => {
+    const details = appStore.getContractDetails(contractId);
+    const updatedPayments = details.payments.map((p) =>
+      p.id === paymentId ? { ...p, ...patch } : p
+    );
+    contractDetailsMap[contractId] = {
+      ...details,
+      payments: updatedPayments,
+    };
+    saveStorage("tlift_contract_details", contractDetailsMap);
+    notifyListeners();
+  },
+
+  deletePayment: (contractId: number, paymentId: number) => {
+    const details = appStore.getContractDetails(contractId);
+    const target = details.payments.find((p) => p.id === paymentId);
+    let updatedMonths = details.months;
+    if (target && target.monthId) {
+      updatedMonths = details.months.map((m) =>
+        m.id === target.monthId
+          ? { ...m, paid: false, paidDate: undefined, paidMethod: undefined, paidRef: undefined }
+          : m
+      );
+    }
+    const updatedPayments = details.payments.filter((p) => p.id !== paymentId);
+    contractDetailsMap[contractId] = {
+      ...details,
+      months: updatedMonths,
+      payments: updatedPayments,
+    };
     saveStorage("tlift_contract_details", contractDetailsMap);
     notifyListeners();
   },
@@ -1195,6 +1396,70 @@ export const appStore = {
     saveStorage("tlift_zones_v2", zones);
     notifyListeners();
   },
+
+  // Checklist Management
+  getChecklist: () => checklistItems,
+  getChecklistCategories: () => checklistCategories,
+  addChecklistCategory: (category: string) => {
+    const trimmed = category.trim();
+    if (!trimmed || checklistCategories.includes(trimmed)) return;
+    checklistCategories = [...checklistCategories, trimmed];
+    saveStorage("tlift_checklist_categories_v1", checklistCategories);
+    notifyListeners();
+  },
+  addChecklistItem: (data: Omit<ChecklistItem, "id" | "rowNo">) => {
+    const nextId = checklistItems.length > 0 ? Math.max(...checklistItems.map((c) => c.id)) + 1 : 1;
+    const nextRowNo = checklistItems.length + 1;
+    const newItem: ChecklistItem = {
+      id: nextId,
+      rowNo: nextRowNo,
+      deviceType: data.deviceType.trim() || "آسانسور",
+      category: data.category.trim() || "طبقات",
+      question: data.question.trim(),
+      period: data.period.trim() || "ماهیانه",
+    };
+    checklistItems = [...checklistItems, newItem];
+    if (newItem.category && !checklistCategories.includes(newItem.category)) {
+      checklistCategories = [...checklistCategories, newItem.category];
+      saveStorage("tlift_checklist_categories_v1", checklistCategories);
+    }
+    saveStorage("tlift_checklist_v1", checklistItems);
+    notifyListeners();
+    return newItem;
+  },
+  updateChecklistItem: (id: number, data: Partial<ChecklistItem>) => {
+    checklistItems = checklistItems.map((item) =>
+      item.id === id
+        ? {
+            ...item,
+            deviceType: data.deviceType !== undefined ? data.deviceType.trim() : item.deviceType,
+            category: data.category !== undefined ? data.category.trim() : item.category,
+            question: data.question !== undefined ? data.question.trim() : item.question,
+            period: data.period !== undefined ? data.period.trim() : item.period,
+          }
+        : item
+    );
+    if (data.category && !checklistCategories.includes(data.category.trim())) {
+      checklistCategories = [...checklistCategories, data.category.trim()];
+      saveStorage("tlift_checklist_categories_v1", checklistCategories);
+    }
+    saveStorage("tlift_checklist_v1", checklistItems);
+    notifyListeners();
+  },
+  deleteChecklistItem: (id: number) => {
+    checklistItems = checklistItems.filter((item) => item.id !== id);
+    // Recalculate rowNo
+    checklistItems = checklistItems.map((item, idx) => ({ ...item, rowNo: idx + 1 }));
+    saveStorage("tlift_checklist_v1", checklistItems);
+    notifyListeners();
+  },
+  resetChecklistToDefault: () => {
+    checklistItems = INITIAL_CHECKLIST;
+    checklistCategories = INITIAL_CHECKLIST_CATEGORIES;
+    saveStorage("tlift_checklist_v1", checklistItems);
+    saveStorage("tlift_checklist_categories_v1", checklistCategories);
+    notifyListeners();
+  },
 };
 
 // React Hooks
@@ -1267,3 +1532,24 @@ export function useZones() {
     () => zones
   );
 }
+
+export function useChecklist() {
+  return useSyncExternalStore(
+    (callback) => {
+      listeners.add(callback);
+      return () => listeners.delete(callback);
+    },
+    () => checklistItems
+  );
+}
+
+export function useChecklistCategories() {
+  return useSyncExternalStore(
+    (callback) => {
+      listeners.add(callback);
+      return () => listeners.delete(callback);
+    },
+    () => checklistCategories
+  );
+}
+

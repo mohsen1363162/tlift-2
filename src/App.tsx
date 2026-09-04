@@ -43,7 +43,9 @@ import CsvUploadPage from "./CsvUploadPage";
 import MarketingFlyout from "./components/MarketingFlyout";
 import ScheduleManagementPage from "./components/ScheduleManagementPage";
 import ZonesPage from "./components/ZonesPage";
-import { useContracts, useMarketingItems, appStore } from "./store";
+import ChecklistSettingsPage from "./components/ChecklistSettingsPage";
+import ServiceReportView from "./components/ServiceReportView";
+import { useContracts, useMarketingItems, appStore, MonthService } from "./store";
 
 type Tab = {
   id: number;
@@ -61,9 +63,13 @@ type Tab = {
     | "customerReport"
     | "csvUpload"
     | "schedule"
-    | "zones";
+    | "zones"
+    | "checklist"
+    | "serviceReport";
   contract?: Contract;
+  monthService?: MonthService;
   csvType?: "contracts" | "customers";
+  initialSubView?: "overview" | "payments";
 };
 
 let uid = 100;
@@ -105,10 +111,11 @@ export default function App() {
     title = "تب جدید",
     kind: Tab["kind"] = "blank",
     contract?: Contract,
-    csvType?: "contracts" | "customers"
+    csvType?: "contracts" | "customers",
+    initialSubView?: "overview" | "payments"
   ) => {
     const id = ++uid;
-    setTabs((s) => [...s, { id, title, kind, contract, csvType }]);
+    setTabs((s) => [...s, { id, title, kind, contract, csvType, initialSubView }]);
     setActive(id);
   };
   const closeTab = (id: number) => {
@@ -135,17 +142,75 @@ export default function App() {
     else if (label === "قطعات" || label === "قطعات مصرفی") addTab("قطعه ها", "parts");
     else if (label === "منطقه" || label === "منطقه‌ها" || label === "منطقه ها" || label.includes("منطقه"))
       addTab("منطقه ها", "zones");
+    else if (
+      label === "چک لیست" ||
+      label.includes("چک لیست") ||
+      label === "چک‌لیست"
+    )
+      addTab("تنظیمات اولیه - چک لیست", "checklist");
+    else if (
+      label === "پرداختی ها" ||
+      label === "پرداختی‌ها" ||
+      label === "چاپ پرداخت ها" ||
+      label === "پرداخت ها"
+    ) {
+      const target = contracts.find((c) => c.no === "5475") || contracts[0];
+      if (target) {
+        addTab(
+          `پرداختی های قرارداد ${target.no}`,
+          "contractView",
+          target,
+          undefined,
+          "payments"
+        );
+      }
+    }
     else if (label.includes("مشتریان") && label.includes("CSV")) addTab("آپلود CSV مشتریان", "csvUpload", undefined, "customers");
     else if (label.includes("قرارداد") && label.includes("CSV")) addTab("آپلود CSV قراردادها", "csvUpload", undefined, "contracts");
     else if (label === "آپلود فایلهای CSV" || label.toLowerCase().includes("csv")) addTab("آپلود فایلهای CSV", "csvUpload", undefined, "contracts");
     else if (label.startsWith("ثبت قرارداد")) addTab("قرارداد جدید", "newContract");
+    else if (label === "مشاهده گزارش" || label === "مشاهده گزارش سرویس") {
+      const target = contracts.find((c) => c.no === "5475") || contracts[0];
+      if (target) {
+        const details = appStore.getContractDetails(target.id);
+        const m = details.months[0];
+        if (m) openServiceReport(m, target);
+      }
+    }
     else addTab(label, "blank");
     setOpenMenu(null);
   };
 
-  const openContractView = (c: Contract) => {
+  const openContractView = (
+    c: Contract,
+    initialSubView: "overview" | "payments" = "overview"
+  ) => {
     const id = ++uid;
-    setTabs((s) => [...s, { id, title: "مشاهده ی قرارداد", kind: "contractView", contract: c }]);
+    setTabs((s) => [
+      ...s,
+      {
+        id,
+        title: initialSubView === "payments" ? `پرداختی های قرارداد ${c.no}` : "مشاهده ی قرارداد",
+        kind: "contractView",
+        contract: c,
+        initialSubView,
+      },
+    ]);
+    setActive(id);
+  };
+
+  const openServiceReport = (m: MonthService, c: Contract) => {
+    const id = ++uid;
+    setTabs((s) => [
+      ...s,
+      {
+        id,
+        title: "مشاهده گزارش",
+        kind: "serviceReport",
+        contract: c,
+        monthService: m,
+      },
+    ]);
     setActive(id);
   };
 
@@ -429,7 +494,22 @@ export default function App() {
                 onOpenCustomers={() => addTab("مشتریان", "customers")}
               />
             ) : current?.kind === "contractView" && current.contract ? (
-              <ContractView t={t} contract={current.contract} />
+              <ContractView
+                t={t}
+                contract={current.contract}
+                initialSubView={current.initialSubView || "overview"}
+                onOpenServiceReport={openServiceReport}
+              />
+            ) : current?.kind === "serviceReport" && current.contract && current.monthService ? (
+              <ServiceReportView
+                t={t}
+                contract={current.contract}
+                monthService={current.monthService}
+                onShowToast={showToast}
+                onClose={() => closeTab(current.id)}
+              />
+            ) : current?.kind === "checklist" ? (
+              <ChecklistSettingsPage t={t} onShowToast={showToast} />
             ) : current?.kind === "newContract" ? (
               <NewContractWizard
                 t={t}

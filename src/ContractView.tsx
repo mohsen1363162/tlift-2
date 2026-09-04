@@ -45,18 +45,32 @@ import {
 import type { Theme } from "./theme";
 import { Contract } from "./data";
 import ServiceForm from "./ServiceForm";
+import ServiceReportView from "./components/ServiceReportView";
+import { ContractPaymentsView } from "./components/ContractPaymentsView";
 import { Field, inputCls, SearchSelect, DatePicker } from "./ui";
 import { appStore, useContractDetails, MonthService, PaymentRecord, Invoice } from "./store";
 
 const fa = (n: string | number) => String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]);
 const MONTHS = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
 
-export default function ContractView({ t, contract }: { t: Theme; contract: Contract }) {
+export default function ContractView({
+  t,
+  contract,
+  initialSubView = "overview",
+  onOpenServiceReport,
+}: {
+  t: Theme;
+  contract: Contract;
+  initialSubView?: "overview" | "payments";
+  onOpenServiceReport?: (monthService: MonthService, contract: Contract) => void;
+}) {
   const [toast, setToast] = useState<string | null>(null);
   const notify = (m: string) => {
     setToast(m);
     setTimeout(() => setToast(null), 2500);
   };
+
+  const [subView, setSubView] = useState<"overview" | "payments">(initialSubView);
 
   const details = useContractDetails(contract.id);
   const { months, payments, invoices } = details;
@@ -66,6 +80,7 @@ export default function ContractView({ t, contract }: { t: Theme; contract: Cont
     const firstDone = months.find((m) => m.done);
     return firstDone ? firstDone.id : months[0]?.id || 1;
   });
+  const [serviceReportModalMonth, setServiceReportModalMonth] = useState<MonthService | null>(null);
 
   // Quick Pay Modal State
   const [quickPayModalMonth, setQuickPayModalMonth] = useState<MonthService | null>(null);
@@ -104,15 +119,15 @@ export default function ContractView({ t, contract }: { t: Theme; contract: Cont
   ];
 
   const actions = [
-    ["ضمانت نامه ها", FileCheck2],
     ["چاپ تاریخچه قرارداد", Printer],
     ["چاپ کاردکس قرارداد", Printer],
     ["چاپ فاکتور سرویس ها", Printer],
-    ["چاپ پرداخت ها", Printer],
+    ["پرداخت ها", CreditCard],
     ["پرونده مالی قرارداد", Wallet],
     ["مستندات قرارداد", Paperclip],
     ["پرونده مالی مشتری", Wallet],
     ["پرونده مالی ساختمان", Building2],
+    ["ضمانت نامه ها", FileCheck2],
     ["پیش فاکتور / فاکتورها", PlayCircle],
     ["مفاصاحساب بیمه", ShieldCheck],
     ["ویرایش قرارداد", Pencil],
@@ -182,6 +197,17 @@ export default function ContractView({ t, contract }: { t: Theme; contract: Cont
     appStore.cancelMonthPayment(contract.id, monthId);
     notify(`پرداخت ماه ${targetMonth.m} لغو گردید`);
   };
+
+  if (subView === "payments") {
+    return (
+      <ContractPaymentsView
+        t={t}
+        contract={contract}
+        onBack={() => setSubView("overview")}
+        onShowToast={notify}
+      />
+    );
+  }
 
   if (serviceIdx !== null) {
     const s = months[serviceIdx];
@@ -290,102 +316,190 @@ export default function ContractView({ t, contract }: { t: Theme; contract: Cont
           t.dark ? "bg-[#232323]" : "bg-neutral-50"
         }`}
       >
-        {actions.map(([label, I]) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => notify(label)}
-            className={`flex items-center gap-1.5 text-[12.5px] ${t.text} hover:text-violet-400`}
-          >
-            <span>{label}</span>
-            <I size={14} className={t.sub} />
-          </button>
-        ))}
+        {actions.map(([label, I]) => {
+          const isPayments = label === "پرداخت ها";
+          return (
+            <div key={label} className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  if (isPayments) {
+                    setSubView("payments");
+                  } else {
+                    notify(label);
+                  }
+                }}
+                className={`flex items-center gap-1.5 text-[12.5px] transition-colors ${
+                  isPayments
+                    ? "font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700"
+                    : `${t.text} hover:text-violet-400`
+                }`}
+              >
+                <span>{label}</span>
+                <I
+                  size={14}
+                  className={
+                    isPayments
+                      ? "text-purple-600 dark:text-purple-400"
+                      : t.sub
+                  }
+                />
+              </button>
+
+              {/* Corner quick print icon specifically for payments */}
+              {isPayments && (
+                <button
+                  type="button"
+                  title="چاپ مستقیم پرداختی‌ها"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSubView("payments");
+                  }}
+                  className={`rounded p-1 text-neutral-400 hover:text-purple-600 hover:bg-purple-500/10 transition-colors`}
+                >
+                  <Printer size={13} />
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {/* device card */}
-      <div className={`mt-3 rounded border p-3 ${t.border}`}>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <Package size={20} className={t.sub} />
-            <span className={`text-[12.5px] ${t.text}`}>
-              {fa("1")}({fa("183576")})
-            </span>
-            <Pencil size={14} className={t.sub} />
-            <Trash size={14} className="text-red-500" />
+      {/* device card (Matching sshot-17.png) */}
+      <div className={`mt-3 rounded-xl border p-3.5 ${t.border} ${t.dark ? "bg-[#1f1f1f]" : "bg-white"}`}>
+        {/* Device Header */}
+        <div className="flex items-center justify-between border-b pb-2.5 border-neutral-700/40 text-[12.5px]">
+          {/* Right: Next service amount */}
+          <div className="text-neutral-300 font-medium">
+            مبلغ سرویس بعدی: <span className="font-mono text-white">۰ ریال</span>
           </div>
-          <div className={`text-[12.5px] ${t.text}`}>مبلغ سرویس ماهانه: ۸٬۵۰۰٬۰۰۰ ریال</div>
-        </div>
-        <div className={`mt-1 flex items-center justify-between text-[12px] ${t.sub}`}>
-          <span>{fa(months.length)} سرویس برنامه‌ریزی شده / برای مشاهده خلاصه روی هر ماه کلیک کنید</span>
-          <span className="flex items-center gap-2">
-            <span className="text-emerald-500 font-medium">{fa(paidCount)} ماه پرداخت شده</span>
-            <span>•</span>
-            <span className="text-amber-500 font-medium">{fa(unpaidCount)} ماه در انتظار پرداخت</span>
-          </span>
+
+          {/* Center: Status count */}
+          <div className="text-neutral-400 font-normal">
+            {fa(months.length)} سرویس برنامه ریزی شده / بدون خرابی
+          </div>
+
+          {/* Left: Device identifier & tools */}
+          <div className="flex items-center gap-2 text-neutral-300">
+            <div className="flex items-center gap-1 font-mono font-bold text-neutral-200">
+              <User size={14} className="text-purple-400" />
+              <span>{fa("1")}</span>
+            </div>
+            <button type="button" className="text-neutral-400 hover:text-white" title="ویرایش دستگاه">
+              <Pencil size={13} />
+            </button>
+            <button type="button" className="text-rose-400 hover:text-rose-300" title="حذف دستگاه">
+              <Trash size={13} />
+            </button>
+            <span className="text-neutral-500">⌄</span>
+          </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap justify-start gap-2">
+        {/* Device Toolbar Buttons */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {deviceTabs.map(([label, I]) => (
             <button
               key={label}
               type="button"
-              onClick={() => notify(label)}
-              className={`flex items-center gap-1 rounded border px-3 py-1.5 text-[12px] ${t.border} ${t.text} ${t.hover}`}
+              onClick={() => {
+                if (label === "سرویس ها" || label === "سرویس و تعمیر") {
+                  setServiceReportModalMonth(selectedMonthObj || months[0]);
+                } else {
+                  notify(label);
+                }
+              }}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] transition ${
+                label === "سرویس ها"
+                  ? "border-purple-500/50 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20"
+                  : `${t.border} ${t.text} ${t.hover}`
+              }`}
             >
               <span>{label}</span>
-              <I size={13} className={t.sub} />
+              <I size={13} className={label === "سرویس ها" ? "text-purple-400" : t.sub} />
             </button>
           ))}
           <button
             type="button"
             onClick={() => notify("اعلام توقف")}
-            className="flex items-center gap-1 rounded border border-red-600 px-3 py-1.5 text-[12px] text-red-500"
+            className="flex items-center gap-1 rounded-lg border border-red-500/60 bg-red-500/10 px-3 py-1.5 text-[12px] text-red-400 hover:bg-red-500/20"
           >
             <Ban size={13} /> اعلام توقف
           </button>
         </div>
 
-        {/* Months Grid */}
-        <div className="mt-4 flex flex-wrap gap-3">
-          {months.map((s, i) => {
+        {/* Months Grid with Quick Pay */}
+        <div className="mt-4 flex flex-wrap gap-2.5">
+          {months.map((s) => {
             const isSelected = selectedMonthId === s.id;
             return (
               <div
                 key={s.id}
-                className={`flex w-[108px] flex-col overflow-hidden rounded-lg border transition-all duration-150 ${
+                className={`group flex w-[98px] flex-col overflow-hidden rounded-xl border transition-all duration-150 ${
                   isSelected
-                    ? "border-violet-500 ring-2 ring-violet-500/50 shadow-md scale-[1.02]"
+                    ? "border-purple-500 ring-2 ring-purple-500/50 shadow-md scale-[1.02]"
                     : s.paid
-                    ? "border-emerald-500/40 hover:border-emerald-500/80"
-                    : `${t.border} hover:border-violet-400`
-                } ${t.dark ? "bg-[#252525]" : "bg-white"}`}
+                    ? "border-emerald-700/60 hover:border-emerald-500"
+                    : `${t.border} hover:border-purple-400`
+                } ${t.dark ? "bg-[#1f1f1f]" : "bg-white"}`}
               >
-                {/* Month card click trigger to display summary */}
-                <button
-                  type="button"
+                {/* Month Card Upper Section */}
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedMonthId(s.id)}
-                  title="کلیک برای مشاهده خلاصه گزارش و قطعات این ماه"
-                  className={`relative flex h-[84px] w-full flex-col items-center justify-center gap-0.5 p-1.5 text-[12px] transition ${
+                  onDoubleClick={() => setServiceReportModalMonth(s)}
+                  title="کلیک برای مشاهده خلاصه در پایین / دابل‌کلیک یا آیکون برای باز کردن پنجره سرویس"
+                  className={`relative flex h-[82px] cursor-pointer flex-col items-center justify-between p-2 transition ${
                     s.done
-                      ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      ? isSelected
+                        ? "bg-[#184528] text-white"
+                        : "bg-[#163c24] hover:bg-[#1b482c] text-white"
                       : isSelected
-                      ? `${t.dark ? "bg-violet-950/40 text-violet-300" : "bg-violet-50 text-violet-800"}`
-                      : `${t.dark ? "bg-[#2e2e2e]" : "bg-neutral-100"} ${t.text} hover:opacity-90`
+                      ? t.dark
+                        ? "bg-purple-950/40 text-purple-200"
+                        : "bg-purple-50 text-purple-900"
+                      : t.dark
+                      ? "bg-[#222] hover:bg-[#272727] text-neutral-300"
+                      : "bg-neutral-50 hover:bg-neutral-100 text-neutral-700"
                   }`}
                 >
-                  {isSelected && (
-                    <span className="absolute top-1 right-1 flex h-2 w-2 rounded-full bg-violet-400 animate-pulse" />
-                  )}
-                  <span className="text-[14px] font-bold">{fa(24)}</span>
-                  <span className="text-[11.5px] font-medium">
+                  {/* Top info row: day + quick window icon */}
+                  <div className="flex w-full items-center justify-between">
+                    <span className="text-[13.5px] font-bold font-mono">
+                      {fa(26)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setServiceReportModalMonth(s);
+                      }}
+                      title="مشاهده اطلاعات و چک‌لیست در پنجره سرویس"
+                      className="rounded p-0.5 text-neutral-400 hover:text-white hover:bg-white/10"
+                    >
+                      <FileText size={12} />
+                    </button>
+                  </div>
+
+                  {/* Month name and year */}
+                  <span className="text-[11.5px] font-semibold">
                     {s.m} {fa(s.y)}
                   </span>
-                  {s.done ? <CalendarCheck size={14} /> : <CalendarDays size={14} className={t.sub} />}
-                  <span className={`text-[10px] ${s.done ? "text-white font-medium" : t.sub}`}>
-                    {s.done ? fa(s.date || "") : "برنامه‌ریزی شده"}
-                  </span>
-                </button>
+
+                  {/* Status icon & label */}
+                  <div className="flex items-center gap-1">
+                    {s.done ? (
+                      <div className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-white">
+                        <Check size={9} className="stroke-[3]" />
+                      </div>
+                    ) : (
+                      <CalendarDays size={11} className="text-neutral-500" />
+                    )}
+                    <span className={`text-[9.5px] truncate ${s.done ? "font-mono font-medium text-emerald-300" : "text-neutral-400"}`}>
+                      {s.done ? fa(s.date || "") : "برنامه‌ریزی شده"}
+                    </span>
+                  </div>
+                </div>
 
                 {/* Direct quick pay action right under each month */}
                 <div
@@ -393,16 +507,16 @@ export default function ContractView({ t, contract }: { t: Theme; contract: Cont
                     s.paid
                       ? t.dark
                         ? "bg-emerald-950/40"
-                        : "bg-emerald-50"
+                        : "bg-emerald-50/70"
                       : t.dark
-                      ? "bg-[#1f1f1f]"
+                      ? "bg-[#181818]"
                       : "bg-neutral-50"
                   }`}
                 >
                   {s.paid ? (
                     <div className="flex flex-col items-center gap-0.5">
-                      <span className="flex items-center justify-center gap-1 text-[10.5px] font-semibold text-emerald-500">
-                        <CheckCircle2 size={12} />
+                      <span className="flex items-center justify-center gap-1 text-[10px] font-semibold text-emerald-500">
+                        <CheckCircle2 size={11} />
                         پرداخت شده
                       </span>
                       <button
@@ -412,7 +526,7 @@ export default function ContractView({ t, contract }: { t: Theme; contract: Cont
                           cancelPaymentForMonth(s.id);
                         }}
                         title="لغو پرداخت این ماه"
-                        className="text-[9.5px] text-neutral-400 hover:text-red-400 hover:underline"
+                        className="text-[9px] text-neutral-400 hover:text-red-400 hover:underline"
                       >
                         لغو پرداخت
                       </button>
@@ -426,9 +540,9 @@ export default function ContractView({ t, contract }: { t: Theme; contract: Cont
                         setQuickPayAmount(s.amount.toLocaleString("en-US"));
                         setQuickPayModalMonth(s);
                       }}
-                      className="flex w-full items-center justify-center gap-1 rounded bg-violet-600 py-1 text-[11px] font-medium text-white transition hover:bg-violet-700 active:scale-95 shadow-sm"
+                      className="flex w-full items-center justify-center gap-1 rounded bg-purple-600 py-1 text-[10.5px] font-medium text-white transition hover:bg-purple-700 active:scale-95 shadow-sm"
                     >
-                      <Zap size={11} className="fill-white" />
+                      <Zap size={10} className="fill-white" />
                       پرداخت سریع
                     </button>
                   )}
@@ -445,12 +559,14 @@ export default function ContractView({ t, contract }: { t: Theme; contract: Cont
                 appStore.addMonthServiceSlot(contract.id);
                 notify("سرویس دوره‌ای جدید اضافه شد");
               }}
-              className={`flex h-[118px] w-[108px] flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed text-[11px] ${t.card} ${t.sub} hover:border-violet-500 hover:text-violet-500`}
+              className={`flex h-[116px] w-[98px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed text-[11px] ${t.border} ${t.sub} hover:border-purple-500 hover:text-purple-400 transition`}
             >
-              <Plus size={16} /> سرویس جدید
+              <Plus size={16} />
+              <span>سرویس جدید</span>
             </button>
           ))}
         </div>
+      </div>
 
         {/* Selected Month Summary Box (باکس جامع خلاصه گزارش، سرویسکار و قطعات مصرفی) */}
         {selectedMonthObj && (
@@ -513,14 +629,24 @@ export default function ContractView({ t, contract }: { t: Theme; contract: Cont
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => setServiceReportModalMonth(selectedMonthObj)}
+                  className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-3.5 py-1.5 text-[12px] font-semibold text-white shadow-sm transition hover:bg-purple-700 active:scale-95"
+                  title="باز کردن پنجره اطلاعات سرویس، جدول مشخصات و چک‌لیست کامل"
+                >
+                  <FileText size={13} />
+                  مشاهده برگه سرویس (پنجره گزارش)
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => {
                     const idx = months.findIndex((m) => m.id === selectedMonthObj.id);
                     if (idx !== -1) setServiceIdx(idx);
                   }}
-                  className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3.5 py-1.5 text-[12px] font-medium text-white shadow-sm transition hover:bg-violet-700 active:scale-95"
+                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${t.border} ${t.hover}`}
                 >
                   <Pencil size={13} />
-                  {selectedMonthObj.done ? "ویرایش / مشاهده فرم کامل" : "ثبت و تکمیل گزارش سرویس"}
+                  {selectedMonthObj.done ? "ویرایش فرم" : "ثبت سرویس"}
                 </button>
 
                 {!selectedMonthObj.paid ? (
@@ -827,7 +953,6 @@ export default function ContractView({ t, contract }: { t: Theme; contract: Cont
             </div>
           </div>
         )}
-      </div>
 
       {/* Quick Pay Modal Popup when clicking direct button on month */}
       {quickPayModalMonth && (
@@ -1009,6 +1134,77 @@ export default function ContractView({ t, contract }: { t: Theme; contract: Cont
           </tfoot>
         </table>
       </div>
+
+      {/* Service Report Popup Modal Window ("پنجره سرویس و چک‌لیست") */}
+      {serviceReportModalMonth && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-2 sm:p-5 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={() => setServiceReportModalMonth(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`relative flex h-[92vh] w-full max-w-[1300px] flex-col overflow-hidden rounded-2xl border shadow-2xl ${t.border} ${
+              t.dark ? "bg-[#161616]" : "bg-neutral-50"
+            }`}
+          >
+            {/* Top Bar */}
+            <div
+              className={`flex items-center justify-between border-b px-4 py-2.5 ${t.border} ${
+                t.dark ? "bg-[#202020]" : "bg-white"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-600 text-white shadow">
+                  <ShieldCheck size={16} />
+                </div>
+                <span className={`text-[13.5px] font-bold ${t.text}`}>
+                  پنجره اطلاعات و چک‌لیست سرویس — ماه {serviceReportModalMonth.m} {fa(serviceReportModalMonth.y)}
+                </span>
+                <span className="rounded bg-purple-500/15 px-2 py-0.5 text-[11px] font-mono text-purple-400">
+                  قرارداد: {fa(contract.number)} | {contract.building}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {onOpenServiceReport && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const m = serviceReportModalMonth;
+                      setServiceReportModalMonth(null);
+                      onOpenServiceReport(m, contract);
+                    }}
+                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-1 text-[11.5px] ${t.border} ${t.hover} ${t.text}`}
+                    title="باز کردن این گزارش در یک تب مجزا"
+                  >
+                    <Files size={13} />
+                    <span>باز کردن در تب جداگانه</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setServiceReportModalMonth(null)}
+                  className="flex items-center gap-1.5 rounded-lg bg-rose-500/20 px-3.5 py-1 text-[12px] font-semibold text-rose-300 hover:bg-rose-500/30 transition active:scale-95"
+                >
+                  <X size={15} />
+                  <span>بستن پنجره</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body: The full ServiceReportView */}
+            <div className="flex-1 overflow-y-auto">
+              <ServiceReportView
+                t={t}
+                contract={contract}
+                monthService={serviceReportModalMonth}
+                onShowToast={notify}
+                onClose={() => setServiceReportModalMonth(null)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div className="fixed bottom-16 left-1/2 z-50 -translate-x-1/2 rounded bg-neutral-800 px-4 py-2 text-[12.5px] text-white shadow-lg">

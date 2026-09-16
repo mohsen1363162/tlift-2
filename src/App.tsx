@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   ArrowLeft,
   RotateCw,
@@ -19,6 +19,7 @@ import {
   LayoutGrid,
   Star,
   CheckCircle2,
+  LogOut,
 } from "lucide-react";
 import {
   navItems,
@@ -46,7 +47,10 @@ import ZonesPage from "./components/ZonesPage";
 import ChecklistSettingsPage from "./components/ChecklistSettingsPage";
 import CpanelSettingsPage from "./components/CpanelSettingsPage";
 import ServiceReportView from "./components/ServiceReportView";
+import WelcomeBanner from "./components/WelcomeBanner";
 import { useContracts, useMarketingItems, appStore, MonthService } from "./store";
+import { useAuth } from "./contexts/AuthContext";
+import { CustomerAuthData } from "./utils/customerAuth";
 
 type Tab = {
   id: number;
@@ -85,6 +89,17 @@ const menus: Record<string, MenuGroup[]> = {
 };
 
 export default function App() {
+  const { currentUserInfo, signOut } = useAuth();
+  const [welcomeUser, setWelcomeUser] = useState<CustomerAuthData | null>(null);
+
+  useEffect(() => {
+    // اگر در این نشست کاربر تازه لاگین کرده باشد
+    const shouldShow = sessionStorage.getItem('tlift_show_welcome');
+    if (shouldShow && currentUserInfo) {
+      setWelcomeUser(currentUserInfo);
+      sessionStorage.removeItem('tlift_show_welcome');
+    }
+  }, [currentUserInfo]);
   const [dark, setDark] = useState(true);
   const [query, setQuery] = useState("");
   const [tabs, setTabs] = useState<Tab[]>([{ id: 1, title: "تب جدید", kind: "home" }]);
@@ -590,9 +605,26 @@ export default function App() {
             <span className="flex items-center gap-1">
               <Monitor size={13} /> شماره اشتراک 141
             </span>
-            <span className="flex items-center gap-1">
-              <User size={13} /> محسن امامی عزیز خوش آمدید!
+            <span
+              onClick={() => currentUserInfo && setWelcomeUser(currentUserInfo)}
+              title="کلیک برای نمایش پیام خوش‌آمدگویی"
+              className="flex items-center gap-1 font-medium text-emerald-400 cursor-pointer hover:underline transition"
+            >
+              <User size={13} /> {currentUserInfo?.name || "محسن امامی"} عزیز خوش آمدید!
+              {currentUserInfo?.userType && (
+                <span className="mr-1 rounded bg-violet-900/60 border border-violet-500/40 px-1.5 py-0.5 text-[10px] text-violet-200">
+                  {currentUserInfo.userType}
+                </span>
+              )}
             </span>
+            <button
+              type="button"
+              onClick={() => signOut()}
+              title="خروج از حساب"
+              className="flex items-center gap-1 text-red-400 hover:text-red-300 transition px-1.5 py-0.5 rounded hover:bg-red-500/10 cursor-pointer"
+            >
+              <LogOut size={13} /> خروج
+            </button>
             <span className="flex items-center gap-1">
               <Headphones size={13} /> پشتیبانی
             </span>
@@ -612,6 +644,15 @@ export default function App() {
             </span>
           </div>
         </div>
+
+        {/* کادر خوش‌آمدگویی شکیل ۵ ثانیه‌ای */}
+        {welcomeUser && (
+          <WelcomeBanner
+            user={welcomeUser}
+            duration={5000}
+            onClose={() => setWelcomeUser(null)}
+          />
+        )}
 
         {/* Floating Toast Notification */}
         {toastMsg && (

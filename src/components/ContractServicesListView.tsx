@@ -83,11 +83,14 @@ export default function ContractServicesListView({
   const [filterCentralSoftware, setFilterCentralSoftware] = useState(false);
   const [filterTechnician, setFilterTechnician] = useState(false);
 
+  // Selection state for multiple rows
+  const [selectedMonthIds, setSelectedMonthIds] = useState<number[]>([]);
+
   // Selected row menu state
   const [openMenuMonthId, setOpenMenuMonthId] = useState<number | null>(null);
 
   // Bulk / Price edit modal state
-  const [priceEditTarget, setPriceEditTarget] = useState<"done" | "notDone" | null>(null);
+  const [priceEditTarget, setPriceEditTarget] = useState<"done" | "notDone" | "selected" | null>(null);
   const [newPriceValue, setNewPriceValue] = useState<string>("7,000,000");
 
   // Single service edit / mark done modal
@@ -172,8 +175,72 @@ export default function ContractServicesListView({
     return 5;
   };
 
+  // Selection state helpers
+  const isAllSelected =
+    filteredServices.length > 0 &&
+    filteredServices.every((m) => selectedMonthIds.includes(m.id));
+
+  const isSomeSelected =
+    filteredServices.some((m) => selectedMonthIds.includes(m.id)) && !isAllSelected;
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      const currentFilteredIds = new Set(filteredServices.map((m) => m.id));
+      setSelectedMonthIds((prev) => prev.filter((id) => !currentFilteredIds.has(id)));
+    } else {
+      const currentFilteredIds = filteredServices.map((m) => m.id);
+      setSelectedMonthIds((prev) => Array.from(new Set([...prev, ...currentFilteredIds])));
+    }
+  };
+
+  const toggleSelectMonth = (id: number) => {
+    setSelectedMonthIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkMarkSelectedDone = () => {
+    if (selectedMonthIds.length === 0) return;
+    let count = 0;
+    selectedMonthIds.forEach((id) => {
+      const m = months.find((x) => x.id === id);
+      if (m && !m.done) {
+        count++;
+        appStore.updateMonthService(contract.id, id, {
+          done: true,
+          date: `1405/${String(id).padStart(2, "0")}/10`,
+          doneBy: "محسن امامی برسری",
+          techs: ["محسن امامی برسری"],
+          delayOrAdvance: "بموقع",
+        });
+      }
+    });
+    if (count > 0) {
+      onShowToast(`${fa(count)} سرویس انتخابی به عنوان انجام شده ثبت شد`);
+    } else {
+      onShowToast("تمامی سرویس‌های انتخابی قبلاً انجام شده‌اند");
+    }
+  };
+
+  const handleBulkPrintChecklist = () => {
+    onShowToast(`چک‌لیست ${fa(selectedMonthIds.length)} سرویس انتخاب شده آماده چاپ شد`);
+  };
+
   const handleBulkPriceSave = () => {
     const cleanNum = parseInt(newPriceValue.replace(/\D/g, ""), 10) || 7000000;
+    if (priceEditTarget === "selected") {
+      months.forEach((m) => {
+        if (selectedMonthIds.includes(m.id)) {
+          appStore.updateMonthService(contract.id, m.id, { amount: cleanNum });
+        }
+      });
+      onShowToast(
+        `قیمت ${fa(selectedMonthIds.length)} سرویس انتخاب شده به ${money(cleanNum)} تغییر یافت`
+      );
+      setPriceEditTarget(null);
+      return;
+    }
+
     const targetDone = priceEditTarget === "done";
     months.forEach((m) => {
       if (m.done === targetDone) {
@@ -395,6 +462,18 @@ export default function ContractServicesListView({
 
         {/* Right: Status Pills & Price Edit Buttons (Ordered right to left in RTL) */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* دکمه ویرایش قیمت موارد انتخاب شده (در صورت انتخاب چند سطر) */}
+          {selectedMonthIds.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setPriceEditTarget("selected")}
+              className="flex items-center gap-1.5 rounded-lg border border-purple-500 bg-purple-900/50 px-3 py-1 text-[11.5px] font-semibold text-purple-200 hover:bg-purple-800/60 transition shadow-sm animate-in fade-in"
+            >
+              <Pencil size={12} />
+              <span>ویرایش قیمت موارد انتخابی ({fa(selectedMonthIds.length)})</span>
+            </button>
+          )}
+
           {/* ویرایش قیمت سرویس های انجام نشده (sshot-6) */}
           <button
             type="button"
@@ -495,27 +574,82 @@ export default function ContractServicesListView({
         </div>
       </div>
 
-      {/* 4. Sub-filters Checkboxes (Matching sshot-2.png) */}
-      <div className="mt-2.5 flex items-center gap-5 text-[11.5px] text-neutral-300">
-        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={filterCentralSoftware}
-            onChange={(e) => setFilterCentralSoftware(e.target.checked)}
-            className="rounded border-neutral-700 bg-[#252525] text-purple-600 focus:ring-0 h-3.5 w-3.5"
-          />
-          <span>ثبت گزارش توسط کاربر نرم افزار مرکزی</span>
-        </label>
+      {/* 4. Sub-filters Checkboxes & Multi-select Toolbar */}
+      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3 text-[11.5px]">
+        <div className="flex items-center gap-5 text-neutral-300">
+          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={filterCentralSoftware}
+              onChange={(e) => setFilterCentralSoftware(e.target.checked)}
+              className="rounded border-neutral-700 bg-[#252525] text-purple-600 focus:ring-0 h-3.5 w-3.5 accent-purple-600 cursor-pointer"
+            />
+            <span>ثبت گزارش توسط کاربر نرم افزار مرکزی</span>
+          </label>
 
-        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={filterTechnician}
-            onChange={(e) => setFilterTechnician(e.target.checked)}
-            className="rounded border-neutral-700 bg-[#252525] text-purple-600 focus:ring-0 h-3.5 w-3.5"
-          />
-          <span>ثبت گزارش توسط سرویسکار</span>
-        </label>
+          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={filterTechnician}
+              onChange={(e) => setFilterTechnician(e.target.checked)}
+              className="rounded border-neutral-700 bg-[#252525] text-purple-600 focus:ring-0 h-3.5 w-3.5 accent-purple-600 cursor-pointer"
+            />
+            <span>ثبت گزارش توسط سرویسکار</span>
+          </label>
+        </div>
+
+        {/* Selected rows action bar */}
+        {selectedMonthIds.length > 0 && (
+          <div className="flex items-center gap-2 rounded-lg border border-purple-700/60 bg-purple-950/50 px-3 py-1 text-[11.5px] text-purple-200 animate-in fade-in">
+            <div className="flex items-center gap-1.5">
+              <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-purple-600 px-1 text-[10px] font-bold text-white">
+                {fa(selectedMonthIds.length)}
+              </span>
+              <span>مورد انتخاب شده</span>
+            </div>
+
+            <span className="text-purple-700">|</span>
+
+            <button
+              type="button"
+              onClick={() => setPriceEditTarget("selected")}
+              className="hover:text-white underline transition"
+            >
+              ویرایش قیمت
+            </button>
+
+            <span className="text-purple-700">|</span>
+
+            <button
+              type="button"
+              onClick={handleBulkMarkSelectedDone}
+              className="hover:text-emerald-300 underline transition"
+            >
+              ثبت انجام شده
+            </button>
+
+            <span className="text-purple-700">|</span>
+
+            <button
+              type="button"
+              onClick={handleBulkPrintChecklist}
+              className="hover:text-white underline transition"
+            >
+              چاپ چک‌لیست
+            </button>
+
+            <span className="text-purple-700">|</span>
+
+            <button
+              type="button"
+              onClick={() => setSelectedMonthIds([])}
+              className="text-neutral-400 hover:text-white transition flex items-center gap-0.5"
+            >
+              <X size={11} />
+              <span>لغو انتخاب</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 5. Table Container */}
@@ -525,6 +659,13 @@ export default function ContractServicesListView({
           <table className="w-full text-right text-[11.5px] border-collapse min-w-[950px]">
             <thead>
               <tr className="border-b border-neutral-800 bg-[#222] text-neutral-400 font-medium select-none">
+                <th className="px-2.5 py-2.5 text-center w-9">
+                  <input
+                    type="checkbox"
+                    disabled
+                    className="h-3.5 w-3.5 rounded border-neutral-700 bg-[#252525] text-purple-600 opacity-40 cursor-not-allowed"
+                  />
+                </th>
                 <th className="px-3 py-2.5 text-center w-12">ردیف</th>
                 <th className="px-3 py-2.5">شماره سرویس</th>
                 <th className="px-3 py-2.5">نوع</th>
@@ -539,7 +680,7 @@ export default function ContractServicesListView({
             </thead>
             <tbody>
               <tr>
-                <td colSpan={10} className="py-20 text-center">
+                <td colSpan={11} className="py-20 text-center">
                   <div className="flex flex-col items-center justify-center gap-3">
                     <div className="relative flex items-center justify-center text-neutral-600">
                       <svg
@@ -570,7 +711,19 @@ export default function ContractServicesListView({
           <table className="w-full text-right text-[11.5px] border-collapse min-w-[1000px]">
             <thead>
               <tr className="border-b border-neutral-800 bg-[#222] text-neutral-400 font-medium select-none">
-                <th className="px-3 py-2.5 text-center w-12">عملیات</th>
+                {/* مربع کوچک انتخاب همه در بالا (Master Checkbox) */}
+                <th className="px-2.5 py-2.5 text-center w-9">
+                  <input
+                    type="checkbox"
+                    ref={(el) => {
+                      if (el) el.indeterminate = isSomeSelected;
+                    }}
+                    checked={isAllSelected}
+                    onChange={toggleSelectAll}
+                    title="انتخاب همه سرویس‌ها"
+                    className="h-3.5 w-3.5 cursor-pointer rounded border-neutral-700 bg-[#252525] text-purple-600 focus:ring-0 accent-purple-600"
+                  />
+                </th>
                 <th className="px-3 py-2.5 text-center w-12">ردیف</th>
                 <th className="px-3 py-2.5">سرویسکاران انجام دهنده</th>
                 <th className="px-3 py-2.5 text-center">تاریخ برنامه ریزی شده</th>
@@ -580,12 +733,13 @@ export default function ContractServicesListView({
                 <th className="px-3 py-2.5 text-left">قیمت نهایی سرویس</th>
                 <th className="px-3 py-2.5 text-center w-24">امتیاز</th>
                 <th className="px-3 py-2.5 text-center">فاکتور تایید نشده</th>
+                <th className="px-2.5 py-2.5 text-center w-12">عملیات</th>
               </tr>
             </thead>
             <tbody>
               {filteredServices.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-16 text-center text-neutral-400">
+                  <td colSpan={11} className="py-16 text-center text-neutral-400">
                     هیچ موردی یافت نشد.
                   </td>
                 </tr>
@@ -596,14 +750,121 @@ export default function ContractServicesListView({
                   const tech = getTechName(m, idx);
                   const stars = getScore(idx);
                   const isMenuOpen = openMenuMonthId === m.id;
+                  const isSelected = selectedMonthIds.includes(m.id);
 
                   return (
                     <tr
                       key={m.id}
-                      className="border-b border-neutral-850 hover:bg-neutral-800/40 transition group text-neutral-200"
+                      onClick={() => toggleSelectMonth(m.id)}
+                      className={`border-b border-neutral-850 hover:bg-neutral-800/40 transition group cursor-pointer text-neutral-200 select-none ${
+                        isSelected ? "bg-purple-950/25 border-purple-900/40" : ""
+                      }`}
                     >
-                      {/* Three Dots Menu Column */}
-                      <td className="px-2 py-3 text-center relative">
+                      {/* مربع کوچک انتخاب سطر (Row Checkbox) */}
+                      <td
+                        className="px-2.5 py-3 text-center"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelectMonth(m.id);
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            toggleSelectMonth(m.id);
+                          }}
+                          className="h-3.5 w-3.5 cursor-pointer rounded border-neutral-700 bg-[#252525] text-purple-600 focus:ring-0 accent-purple-600"
+                        />
+                      </td>
+
+                      {/* ردیف */}
+                      <td className="px-3 py-3 text-center font-mono text-neutral-400">
+                        {fa(idx + 1)}
+                      </td>
+
+                      {/* سرویسکاران انجام دهنده */}
+                      <td className="px-3 py-3 font-medium text-neutral-200">
+                        {m.done ? (
+                          <span>{tech}</span>
+                        ) : (
+                          <span className="text-neutral-500">—</span>
+                        )}
+                      </td>
+
+                      {/* تاریخ برنامه ریزی شده */}
+                      <td className="px-3 py-3 text-center font-mono text-neutral-300">
+                        {fa(plannedDate)}
+                      </td>
+
+                      {/* تاریخ انجام */}
+                      <td className="px-3 py-3 text-center font-mono text-neutral-300">
+                        {m.done && m.date ? (
+                          fa(m.date)
+                        ) : m.done ? (
+                          fa(`${idx + 7} ${m.m} ${m.y}`)
+                        ) : (
+                          <span className="text-neutral-500">-</span>
+                        )}
+                      </td>
+
+                      {/* تاخیر یا تعجیل */}
+                      <td className="px-3 py-3 text-center text-neutral-300">
+                        <span
+                          className={`text-[11.5px] ${
+                            delayText.includes("تاخیر")
+                              ? "text-rose-400"
+                              : delayText.includes("بموقع")
+                              ? "text-emerald-400"
+                              : "text-neutral-400"
+                          }`}
+                        >
+                          {delayText}
+                        </span>
+                      </td>
+
+                      {/* جمع مبلغ قطعه */}
+                      <td className="px-3 py-3 text-left font-mono font-medium text-neutral-200">
+                        {m.partsAmount && m.partsAmount > 0
+                          ? money(m.partsAmount)
+                          : idx === 3 && m.done
+                          ? "۳,۵۰۰,۰۰۰ ریال"
+                          : "-"}
+                      </td>
+
+                      {/* قیمت نهایی سرویس */}
+                      <td className="px-3 py-3 text-left font-mono font-medium text-neutral-200">
+                        {money(m.amount || 7000000)}
+                      </td>
+
+                      {/* امتیاز */}
+                      <td className="px-3 py-3 text-center">
+                        <div className="flex items-center justify-center gap-0.5 text-amber-400">
+                          {Array.from({ length: 5 }).map((_, s) => (
+                            <Star
+                              key={s}
+                              size={12}
+                              className={
+                                s < stars
+                                  ? "fill-amber-400 text-amber-400"
+                                  : "text-neutral-600"
+                              }
+                            />
+                          ))}
+                        </div>
+                      </td>
+
+                      {/* فاکتور تایید نشده */}
+                      <td className="px-3 py-3 text-center text-neutral-400">
+                        ندارد
+                      </td>
+
+                      {/* عملیات (Three Dots Menu Column) */}
+                      <td
+                        className="px-2.5 py-3 text-center relative"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <button
                           type="button"
                           onClick={(e) => {
@@ -620,7 +881,7 @@ export default function ContractServicesListView({
                         {isMenuOpen && (
                           <div
                             onClick={(e) => e.stopPropagation()}
-                            className="absolute right-2 top-10 z-50 min-w-[185px] overflow-hidden rounded-xl border border-neutral-700 bg-[#252525] p-1.5 shadow-2xl animate-in fade-in zoom-in-95 duration-100 text-right text-[11.5px]"
+                            className="absolute left-2 top-10 z-50 min-w-[185px] overflow-hidden rounded-xl border border-neutral-700 bg-[#252525] p-1.5 shadow-2xl animate-in fade-in zoom-in-95 duration-100 text-right text-[11.5px]"
                           >
                             {m.done ? (
                               /* Menu for "انجام شده" (Matching sshot-3.png) */
@@ -724,87 +985,6 @@ export default function ContractServicesListView({
                           </div>
                         )}
                       </td>
-
-                      {/* ردیف */}
-                      <td className="px-3 py-3 text-center font-mono text-neutral-400">
-                        {fa(idx + 1)}
-                      </td>
-
-                      {/* سرویسکاران انجام دهنده */}
-                      <td className="px-3 py-3 font-medium text-neutral-200">
-                        {m.done ? (
-                          <span>{tech}</span>
-                        ) : (
-                          <span className="text-neutral-500">—</span>
-                        )}
-                      </td>
-
-                      {/* تاریخ برنامه ریزی شده */}
-                      <td className="px-3 py-3 text-center font-mono text-neutral-300">
-                        {fa(plannedDate)}
-                      </td>
-
-                      {/* تاریخ انجام */}
-                      <td className="px-3 py-3 text-center font-mono text-neutral-300">
-                        {m.done && m.date ? (
-                          fa(m.date)
-                        ) : m.done ? (
-                          fa(`${idx + 7} ${m.m} ${m.y}`)
-                        ) : (
-                          <span className="text-neutral-500">-</span>
-                        )}
-                      </td>
-
-                      {/* تاخیر یا تعجیل */}
-                      <td className="px-3 py-3 text-center text-neutral-300">
-                        <span
-                          className={`text-[11.5px] ${
-                            delayText.includes("تاخیر")
-                              ? "text-rose-400"
-                              : delayText.includes("بموقع")
-                              ? "text-emerald-400"
-                              : "text-neutral-400"
-                          }`}
-                        >
-                          {delayText}
-                        </span>
-                      </td>
-
-                      {/* جمع مبلغ قطعه */}
-                      <td className="px-3 py-3 text-left font-mono font-medium text-neutral-200">
-                        {m.partsAmount && m.partsAmount > 0
-                          ? money(m.partsAmount)
-                          : idx === 3 && m.done
-                          ? "۳,۵۰۰,۰۰۰ ریال"
-                          : "-"}
-                      </td>
-
-                      {/* قیمت نهایی سرویس */}
-                      <td className="px-3 py-3 text-left font-mono font-medium text-neutral-200">
-                        {money(m.amount || 7000000)}
-                      </td>
-
-                      {/* امتیاز */}
-                      <td className="px-3 py-3 text-center">
-                        <div className="flex items-center justify-center gap-0.5 text-amber-400">
-                          {Array.from({ length: 5 }).map((_, s) => (
-                            <Star
-                              key={s}
-                              size={12}
-                              className={
-                                s < stars
-                                  ? "fill-amber-400 text-amber-400"
-                                  : "text-neutral-600"
-                              }
-                            />
-                          ))}
-                        </div>
-                      </td>
-
-                      {/* فاکتور تایید نشده */}
-                      <td className="px-3 py-3 text-center text-neutral-400">
-                        ندارد
-                      </td>
                     </tr>
                   );
                 })
@@ -871,7 +1051,9 @@ export default function ContractServicesListView({
           >
             <div className="flex items-center justify-between border-b border-neutral-700 pb-3">
               <span className="text-[14px] font-bold text-white">
-                {priceEditTarget === "done"
+                {priceEditTarget === "selected"
+                  ? `ویرایش قیمت ${fa(selectedMonthIds.length)} سرویس انتخاب شده`
+                  : priceEditTarget === "done"
                   ? "ویرایش قیمت سرویس‌های انجام شده"
                   : "ویرایش قیمت سرویس‌های انجام نشده"}
               </span>

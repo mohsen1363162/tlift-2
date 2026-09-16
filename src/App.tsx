@@ -44,6 +44,7 @@ import MarketingFlyout from "./components/MarketingFlyout";
 import ScheduleManagementPage from "./components/ScheduleManagementPage";
 import ZonesPage from "./components/ZonesPage";
 import ChecklistSettingsPage from "./components/ChecklistSettingsPage";
+import CpanelSettingsPage from "./components/CpanelSettingsPage";
 import ServiceReportView from "./components/ServiceReportView";
 import { useContracts, useMarketingItems, appStore, MonthService } from "./store";
 
@@ -65,6 +66,7 @@ type Tab = {
     | "schedule"
     | "zones"
     | "checklist"
+    | "cpanel"
     | "serviceReport";
   contract?: Contract;
   monthService?: MonthService;
@@ -148,6 +150,13 @@ export default function App() {
       label === "چک‌لیست"
     )
       addTab("تنظیمات اولیه - چک لیست", "checklist");
+    else if (
+      label === "مدیریت هاست و خروجی cPanel" ||
+      label.includes("cPanel") ||
+      label.includes("سی پنل") ||
+      label.includes("سی‌پنل")
+    )
+      addTab("تنظیمات اولیه - خروجی cPanel", "cpanel");
     else if (
       label === "پرداختی ها" ||
       label === "پرداختی‌ها" ||
@@ -517,6 +526,8 @@ export default function App() {
               />
             ) : current?.kind === "checklist" ? (
               <ChecklistSettingsPage t={t} onShowToast={showToast} />
+            ) : current?.kind === "cpanel" ? (
+              <CpanelSettingsPage t={t} onShowToast={showToast} />
             ) : current?.kind === "newContract" ? (
               <NewContractWizard
                 t={t}

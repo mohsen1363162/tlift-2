@@ -111,6 +111,7 @@ export const settingsMenu: MenuGroup[] = [
   {
     title: "تنظیمات پایه",
     items: [
+      "مدیریت هاست و خروجی cPanel",
       "داشبورد ساز",
       "شارژ پیامک",
       "قالب پیام",

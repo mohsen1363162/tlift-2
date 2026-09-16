@@ -21,6 +21,7 @@ import {
   Star,
   X,
   Plus,
+  AlertTriangle,
 } from "lucide-react";
 import { Contract } from "../data";
 import {
@@ -29,6 +30,7 @@ import {
   useContractDetails,
   useStaff,
 } from "../store";
+import BreakdownModal from "./BreakdownModal";
 
 interface ThemeProps {
   dark: boolean;
@@ -85,6 +87,7 @@ export default function ContractServicesListView({
 
   // Selection state for multiple rows
   const [selectedMonthIds, setSelectedMonthIds] = useState<number[]>([]);
+  const [isBreakdownModalOpen, setIsBreakdownModalOpen] = useState(false);
 
   // Selected row menu state
   const [openMenuMonthId, setOpenMenuMonthId] = useState<number | null>(null);
@@ -899,7 +902,10 @@ export default function ContractServicesListView({
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => openEditModal(m)}
+                                  onClick={() => {
+                                    setOpenMenuMonthId(null);
+                                    onOpenServiceReport(m);
+                                  }}
                                   className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-neutral-200 hover:bg-neutral-700 hover:text-white transition"
                                 >
                                   <Pencil size={14} className="text-amber-400" />
@@ -927,17 +933,42 @@ export default function ContractServicesListView({
                                   <Bell size={14} className="text-purple-400" />
                                   <span>یادآور</span>
                                 </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenMenuMonthId(null);
+                                    setIsBreakdownModalOpen(true);
+                                  }}
+                                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-amber-400 hover:bg-neutral-700 hover:text-amber-300 transition"
+                                >
+                                  <AlertTriangle size={14} className="text-amber-400" />
+                                  <span>ثبت خرابی</span>
+                                </button>
                               </>
                             ) : (
                               /* Menu for "انجام نشده" (Matching sshot-5.png) */
                               <>
                                 <button
                                   type="button"
-                                  onClick={() => openMarkDoneModal(m)}
+                                  onClick={() => {
+                                    setOpenMenuMonthId(null);
+                                    onOpenServiceReport(m);
+                                  }}
                                   className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-emerald-300 hover:bg-neutral-700 hover:text-emerald-200 transition font-medium"
                                 >
                                   <CheckCircle size={14} className="text-emerald-400" />
                                   <span>انجام سرویس</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenMenuMonthId(null);
+                                    setIsBreakdownModalOpen(true);
+                                  }}
+                                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-amber-400 hover:bg-neutral-700 hover:text-amber-300 transition"
+                                >
+                                  <AlertTriangle size={14} className="text-amber-400" />
+                                  <span>ثبت خرابی</span>
                                 </button>
                                 <button
                                   type="button"
@@ -1222,6 +1253,28 @@ export default function ContractServicesListView({
           </div>
         </div>
       )}
+      {/* Unified Breakdown Modal */}
+      <BreakdownModal
+        isOpen={isBreakdownModalOpen}
+        onClose={() => setIsBreakdownModalOpen(false)}
+        title="ثبت خرابی جدید"
+        onSave={(data) => {
+          appStore.addContractBreakdown(contract.id, {
+            status: "در انتظار تایید",
+            declaredBy: contract.manager || "مدیر ساختمان",
+            declareDate: data.declareDate,
+            declareTime: data.declareTime,
+            executionStatus: "در انتظار اعزام کارشناس",
+            delayOrAdvance: "به موقع",
+            technicians: data.technicians,
+            partsAmount: 0,
+            report: data.reason,
+            description: data.description,
+          });
+          onShowToast("خرابی جدید با موفقیت ثبت گردید");
+          setIsBreakdownModalOpen(false);
+        }}
+      />
     </div>
   );
 }

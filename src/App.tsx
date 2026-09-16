@@ -47,6 +47,8 @@ import ZonesPage from "./components/ZonesPage";
 import ChecklistSettingsPage from "./components/ChecklistSettingsPage";
 import CpanelSettingsPage from "./components/CpanelSettingsPage";
 import ServiceReportView from "./components/ServiceReportView";
+import ServiceForm from "./ServiceForm";
+import ContractRibbonBar from "./components/ContractRibbonBar";
 import WelcomeBanner from "./components/WelcomeBanner";
 import { useContracts, useMarketingItems, appStore, MonthService } from "./store";
 import { useAuth } from "./contexts/AuthContext";
@@ -532,12 +534,37 @@ export default function App() {
                 onOpenServiceReport={openServiceReport}
               />
             ) : current?.kind === "serviceReport" && current.contract && current.monthService ? (
-              <ServiceReportView
+              <ServiceForm
                 t={t}
-                contract={current.contract}
-                monthService={current.monthService}
-                onShowToast={showToast}
-                onClose={() => closeTab(current.id)}
+                planDate={`${current.monthService.y}/${String(current.monthService.id).padStart(2, "0")}/13`}
+                baseAmount={current.monthService.amount || 7000000}
+                contractRibbon={
+                  <ContractRibbonBar
+                    t={t}
+                    contract={current.contract}
+                    contractNo={current.contract.no}
+                  />
+                }
+                initialData={{
+                  techs: current.monthService.techs,
+                  doneBy: current.monthService.doneBy || "محسن امامی برسری",
+                  report: current.monthService.report,
+                  reminder: current.monthService.reminder,
+                  doneDate: current.monthService.date || "1405/06/25",
+                  inTime: current.monthService.inTime || "10:00",
+                  outTime: current.monthService.outTime || "11:30",
+                  wage: current.monthService.wage,
+                  trip: current.monthService.trip,
+                  discount: current.monthService.discount,
+                  faultsList: current.monthService.faultsList,
+                  partsList: current.monthService.partsList,
+                }}
+                onBack={() => closeTab(current.id)}
+                onSubmit={(d) => {
+                  appStore.addServiceSubmission(current.contract!.id, current.monthService!.id, d);
+                  showToast("گزارش سرویس با موفقیت ثبت و ذخیره شد");
+                  closeTab(current.id);
+                }}
               />
             ) : current?.kind === "checklist" ? (
               <ChecklistSettingsPage t={t} onShowToast={showToast} />
@@ -602,9 +629,6 @@ export default function App() {
             <span className="flex items-center gap-1">
               <Megaphone size={13} /> اعلان ها
             </span>
-            <span className="flex items-center gap-1">
-              <Monitor size={13} /> شماره اشتراک 141
-            </span>
             <span
               onClick={() => currentUserInfo && setWelcomeUser(currentUserInfo)}
               title="کلیک برای نمایش پیام خوش‌آمدگویی"
@@ -638,9 +662,6 @@ export default function App() {
             </span>
             <span className="flex items-center gap-1">
               <GitBranch size={13} /> نسخه 1.1.22
-            </span>
-            <span className="flex items-center gap-1">
-              <TerminalSquare size={13} /> توسعه و پشتیبانی توسط توانمند
             </span>
           </div>
         </div>

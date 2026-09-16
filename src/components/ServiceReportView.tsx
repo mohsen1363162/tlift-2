@@ -38,6 +38,7 @@ import {
   useChecklistCategories,
   appStore,
 } from "../store";
+import PartsManagementModal, { ServicePartData } from "./PartsManagementModal";
 
 interface ServiceReportViewProps {
   t: Theme;

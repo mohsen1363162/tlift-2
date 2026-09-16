@@ -14,6 +14,8 @@ import type { Theme } from "./theme";
 import { Field, inputCls, SearchSelect, DatePicker, TimePicker } from "./ui";
 import { TECHS } from "./ServicesCalendar";
 import { partsApi } from "./partsStore";
+import BreakdownModal from "./components/BreakdownModal";
+import PartsManagementModal from "./components/PartsManagementModal";
 
 const fa = (n: string | number) => String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]);
 const money = (n: number) => fa(n.toLocaleString("en-US")) + " ریال";
@@ -24,13 +26,18 @@ export type Part = { code: string; name: string; unit: string; qty: number; pric
 export default function ServiceForm({
   t,
   planDate,
+  baseAmount,
+  contractRibbon,
   initialData,
   onBack,
   onSubmit,
 }: {
   t: Theme;
   planDate: string;
+  baseAmount?: number;
+  contractRibbon?: React.ReactNode;
   initialData?: {
+    serial?: string;
     techs?: string[];
     doneBy?: string;
     report?: string;
@@ -41,6 +48,7 @@ export default function ServiceForm({
     wage?: number;
     trip?: number;
     discount?: number;
+    baseAmount?: number;
     faultsList?: string[];
     partsList?: Part[];
   };
@@ -63,9 +71,11 @@ export default function ServiceForm({
     partsList: Part[];
   }) => void;
 }) {
-  const [serial] = useState("775521");
+  const [serial] = useState(initialData?.serial || "775377");
   const [techs, setTechs] = useState<string[]>(initialData?.techs || [...TECHS]);
-  const [doneBy, setDoneBy] = useState(initialData?.doneBy || initialData?.techs?.[0] || "");
+  const [doneBy, setDoneBy] = useState(
+    initialData?.doneBy || (initialData?.techs && initialData.techs[0]) || "محسن امامی برسری"
+  );
   const [report, setReport] = useState(initialData?.report || "");
   const [reminder, setReminder] = useState(initialData?.reminder || "");
   const [followUp, setFollowUp] = useState("");
@@ -83,9 +93,9 @@ export default function ServiceForm({
   const [showPart, setShowPart] = useState(false);
   const [err, setErr] = useState("");
 
-  const base = 8500000;
+  const base = baseAmount !== undefined ? baseAmount : (initialData?.baseAmount ?? 7000000);
   const partsTotal = useMemo(() => parts.reduce((s, p) => s + p.qty * p.price, 0), [parts]);
-  const total = base + wage + trip + partsTotal - discount;
+  const total = Math.max(0, base + wage + trip + partsTotal - discount);
 
   const addTech = () => {
     const rest = TECHS.filter((x) => !techs.includes(x));
@@ -119,22 +129,24 @@ export default function ServiceForm({
   const box = `rounded border ${t.border} p-4`;
 
   return (
-    <div className={`h-full overflow-y-auto p-4 ${t.text}`}>
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onBack}
-          className={`flex items-center gap-1 rounded border px-3 py-1.5 text-[12.5px] ${t.border} ${t.hover}`}
-        >
-          <ArrowLeft size={14} /> بازگشت
-        </button>
-        <div className="flex items-center gap-2 text-[17px]">
-          <span>انجام سرویس</span>
-          <Check size={22} className={t.sub} />
+    <div className={`h-full overflow-y-auto ${t.text}`}>
+      {contractRibbon}
+      <div className="p-4">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onBack}
+            className={`flex items-center gap-1 rounded border px-3 py-1.5 text-[12.5px] ${t.border} ${t.hover}`}
+          >
+            <ArrowLeft size={14} /> بازگشت
+          </button>
+          <div className="flex items-center gap-2 text-[17px]">
+            <span>انجام سرویس</span>
+            <Check size={22} className={t.sub} />
+          </div>
         </div>
-      </div>
 
-      <div className={`my-4 border-t border-dashed ${t.border}`} />
+        <div className={`my-4 border-t border-dashed ${t.border}`} />
 
       <div className="grid grid-cols-12 gap-5">
         {/* right main column */}
@@ -204,7 +216,7 @@ export default function ServiceForm({
               <button
                 type="button"
                 onClick={() => setShowFault(true)}
-                className="rounded bg-violet-400 px-4 py-1.5 text-[12.5px] text-white hover:bg-violet-500"
+                className="flex items-center gap-1.5 rounded-lg bg-[#7c5cdb] hover:bg-[#6c48cf] px-4 py-1.5 text-[12.5px] font-semibold text-white shadow transition active:scale-95"
               >
                 افزودن خرابی
               </button>
@@ -227,7 +239,7 @@ export default function ServiceForm({
                     <td className="px-3 py-2.5 text-center">
                       <Trash2
                         size={14}
-                        className="mx-auto cursor-pointer text-red-500"
+                        className="mx-auto cursor-pointer text-red-500 hover:text-red-400 transition"
                         onClick={() => setFaults(faults.filter((_, j) => j !== i))}
                       />
                     </td>
@@ -244,19 +256,28 @@ export default function ServiceForm({
 
           {/* parts */}
           <div className={box}>
-            <div className="mb-3 flex justify-start">
+            <div className="mb-3 flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => setShowPart(true)}
-                className="flex items-center gap-1 rounded bg-violet-400 px-4 py-1.5 text-[12.5px] text-white hover:bg-violet-500"
+                className="flex items-center gap-1.5 rounded-lg bg-[#7c5cdb] hover:bg-[#6c48cf] px-4 py-1.5 text-[12.5px] font-semibold text-white shadow transition active:scale-95"
               >
-                <Wrench size={13} /> مدیریت قطعات
+                <Wrench size={13} />
+                <span>مدیریت قطعات</span>
               </button>
+              {parts.length > 0 && (
+                <div className="flex items-center gap-3 text-[11.5px]">
+                  <span className="text-neutral-400">تعداد اقلام: {fa(parts.length)}</span>
+                  <span className="font-bold text-violet-400 font-mono">
+                    جمع کل: {money(partsTotal)}
+                  </span>
+                </div>
+              )}
             </div>
             <table className="w-full text-[12.5px]">
               <thead className={t.sub}>
                 <tr className={`border-b ${t.border}`}>
-                  {["کد قطعه", "نام قطعه", "واحد", "تعداد", "قیمت واحد", "قیمت کل", "حذف"].map((h) => (
+                  {["کد قطعه", "نام قطعه", "واحد", "تعداد", "قیمت واحد (ریال)", "قیمت کل (ریال)", "عملیات"].map((h) => (
                     <th key={h} className="px-3 py-2 text-right font-normal">
                       {h}
                     </th>
@@ -266,16 +287,18 @@ export default function ServiceForm({
               <tbody>
                 {parts.map((p, i) => (
                   <tr key={i} className={`border-b ${t.border}`}>
-                    <td className="px-3 py-2.5">{p.code}</td>
-                    <td className="px-3 py-2.5">{p.name}</td>
+                    <td className="px-3 py-2.5 font-mono">{p.code}</td>
+                    <td className="px-3 py-2.5 font-medium">{p.name}</td>
                     <td className="px-3 py-2.5">{p.unit}</td>
-                    <td className="px-3 py-2.5">{fa(p.qty)}</td>
-                    <td className="px-3 py-2.5">{money(p.price)}</td>
-                    <td className="px-3 py-2.5">{money(p.qty * p.price)}</td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-3 py-2.5 font-mono">{fa(p.qty)}</td>
+                    <td className="px-3 py-2.5 font-mono">{money(p.price)}</td>
+                    <td className="px-3 py-2.5 font-mono font-semibold text-violet-300">
+                      {money(p.qty * p.price)}
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
                       <Trash2
                         size={14}
-                        className="cursor-pointer text-red-500"
+                        className="mx-auto cursor-pointer text-red-500 hover:text-red-400 transition"
                         onClick={() => setParts(parts.filter((_, j) => j !== i))}
                       />
                     </td>
@@ -285,7 +308,7 @@ export default function ServiceForm({
             </table>
             {parts.length === 0 && (
               <div className={`flex flex-col items-center gap-2 py-10 text-[12.5px] ${t.sub}`}>
-                <Printer size={44} /> قطعه‌ای موجود نیست
+                <Inbox size={44} /> قطعه‌ای برای این سرویس ثبت نشده است
               </div>
             )}
           </div>
@@ -384,159 +407,35 @@ export default function ServiceForm({
           </button>
         </div>
       </div>
-
-      {showFault && (
-        <FaultModal
-          t={t}
-          onClose={() => setShowFault(false)}
-          onSave={(f) => {
-            setFaults([...faults, f]);
-            setShowFault(false);
-          }}
-        />
-      )}
-      {showPart && (
-        <PartModal
-          t={t}
-          onClose={() => setShowPart(false)}
-          onSave={(p) => {
-            setParts([...parts, p]);
-            setShowPart(false);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function FaultModal({
-  t,
-  onClose,
-  onSave,
-}: {
-  t: Theme;
-  onClose: () => void;
-  onSave: (f: Fault) => void;
-}) {
-  const [by, setBy] = useState(TECHS[2]);
-  const [date, setDate] = useState("");
-  const [reason, setReason] = useState("");
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      onMouseDown={onClose}
-    >
-      <div
-        onMouseDown={(e) => e.stopPropagation()}
-        className={`w-full max-w-[520px] space-y-4 rounded p-5 ${t.dark ? "bg-[#242424]" : "bg-white"} ${t.text}`}
-      >
-        <div className="text-[14px]">افزودن خرابی</div>
-        <Field label="ثبت توسط">
-          <SearchSelect t={t} value={by} onChange={setBy} options={TECHS} />
-        </Field>
-        <Field label="تاریخ اعلام">
-          <DatePicker t={t} value={date} onChange={setDate} />
-        </Field>
-        <Field label="دلایل">
-          <textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            className={`h-24 w-full rounded border p-2 text-[12.5px] outline-none ${t.input}`}
-          />
-        </Field>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => onSave({ by, date: date || "-", reason: reason || "-" })}
-            className="rounded bg-violet-500 px-5 py-1.5 text-[12.5px] text-white"
-          >
-            ثبت
-          </button>
-          <button type="button" onClick={onClose} className={`rounded border px-5 py-1.5 text-[12.5px] ${t.border}`}>
-            انصراف
-          </button>
-        </div>
       </div>
-    </div>
-  );
-}
 
-function PartModal({
-  t,
-  onClose,
-  onSave,
-}: {
-  t: Theme;
-  onClose: () => void;
-  onSave: (p: Part) => void;
-}) {
-  const [p, setP] = useState<Part>({ code: "", name: "", unit: "عدد", qty: 1, price: 0 });
-  const catalog = partsApi.all();
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      onMouseDown={onClose}
-    >
-      <div
-        onMouseDown={(e) => e.stopPropagation()}
-        className={`w-full max-w-[620px] space-y-4 rounded p-5 ${t.dark ? "bg-[#242424]" : "bg-white"} ${t.text}`}
-      >
-        <div className="text-[14px]">مدیریت قطعات</div>
-        <Field label="انتخاب از فهرست قطعات">
-          <SearchSelect
-            t={t}
-            value={p.name}
-            placeholder="جستجوی قطعه..."
-            options={catalog.map((c) => c.name)}
-            onChange={(v) => {
-              const c = catalog.find((x) => x.name === v);
-              if (c) setP({ code: c.code, name: c.name, unit: c.unit, qty: 1, price: c.price });
-            }}
-          />
-        </Field>
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="کد قطعه">
-            <input value={p.code} onChange={(e) => setP({ ...p, code: e.target.value })} className={inputCls(t)} />
-          </Field>
-          <Field label="نام قطعه">
-            <input value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} className={inputCls(t)} />
-          </Field>
-          <Field label="واحد">
-            <SearchSelect
-              t={t}
-              value={p.unit}
-              onChange={(v) => setP({ ...p, unit: v })}
-              options={["عدد", "لیتر", "متر", "کیلوگرم", "بسته"]}
-            />
-          </Field>
-          <Field label="تعداد">
-            <input
-              value={p.qty}
-              onChange={(e) => setP({ ...p, qty: +e.target.value.replace(/\D/g, "") || 0 })}
-              className={inputCls(t)}
-            />
-          </Field>
-          <Field label="قیمت واحد (ریال)" className="col-span-2">
-            <input
-              value={p.price}
-              onChange={(e) => setP({ ...p, price: +e.target.value.replace(/\D/g, "") || 0 })}
-              className={inputCls(t)}
-            />
-          </Field>
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => onSave(p)}
-            className="rounded bg-violet-500 px-5 py-1.5 text-[12.5px] text-white"
-          >
-            ثبت
-          </button>
-          <button type="button" onClick={onClose} className={`rounded border px-5 py-1.5 text-[12.5px] ${t.border}`}>
-            انصراف
-          </button>
-        </div>
-      </div>
+      <BreakdownModal
+        isOpen={showFault}
+        onClose={() => setShowFault(false)}
+        title="ثبت خرابی جدید"
+        onSave={(data) => {
+          setFaults([
+            ...faults,
+            {
+              by: data.technicians[0] || "محسن امامی برسری",
+              date: data.declareDate,
+              reason: data.description ? `${data.reason} (${data.description})` : data.reason,
+            },
+          ]);
+          setShowFault(false);
+        }}
+      />
+      {/* Unified Parts Management Modal */}
+      <PartsManagementModal
+        isOpen={showPart}
+        onClose={() => setShowPart(false)}
+        currentParts={parts}
+        onDeleteCurrentPart={(idx) => setParts(parts.filter((_, j) => j !== idx))}
+        onSave={(newPart) => {
+          setParts((prev) => [...prev, newPart]);
+          setShowPart(false);
+        }}
+      />
     </div>
   );
 }

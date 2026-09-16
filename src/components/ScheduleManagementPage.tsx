@@ -26,10 +26,14 @@ import {
   MapPin,
   FileCheck,
   AlertCircle,
+  AlertTriangle,
   SlidersHorizontal,
 } from "lucide-react";
-import { ScheduledService, appStore, useScheduledServices, useStaff, useZones } from "../store";
+import { ScheduledService, appStore, useScheduledServices, useStaff, useZones, useContracts } from "../store";
 import { Theme } from "../theme";
+import ServiceForm from "../ServiceForm";
+import ContractRibbonBar from "./ContractRibbonBar";
+import BreakdownModal from "./BreakdownModal";
 
 interface ScheduleManagementPageProps {
   t: Theme;
@@ -45,6 +49,7 @@ export default function ScheduleManagementPage({
   const services = useScheduledServices();
   const staffList = useStaff();
   const registeredZones = useZones();
+  const contracts = useContracts();
 
   // Filters
   const [startDate, setStartDate] = useState("1405/06/01");
@@ -72,6 +77,8 @@ export default function ScheduleManagementPage({
     | "newService"
   >(null);
   const [targetService, setTargetService] = useState<ScheduledService | null>(null);
+  const [reportService, setReportService] = useState<ScheduledService | null>(null);
+  const [breakdownService, setBreakdownService] = useState<ScheduledService | null>(null);
 
   // Form states for modals
   const [newDateInput, setNewDateInput] = useState("");
@@ -302,6 +309,72 @@ export default function ScheduleManagementPage({
     setNewCustomer("");
     setNewContractNo("");
   };
+
+  if (reportService) {
+    const allContracts = appStore.getContracts();
+    const matchingContract = allContracts.find((c) => c.no === reportService.contractNo);
+    return (
+      <div className="flex h-full flex-col">
+        <ServiceForm
+          t={t}
+          planDate={reportService.scheduledDate || "1405/07/13"}
+          baseAmount={7000000}
+          contractRibbon={
+            <ContractRibbonBar
+              t={t}
+              contract={matchingContract}
+              contractNo={reportService.contractNo}
+              buildingName={reportService.buildingName}
+              managerName={reportService.customerName}
+              totalPayable={14000000}
+              totalPaid={14000000}
+              debt={0}
+              buildingDebt={0}
+              customerDebt={0}
+            />
+          }
+          initialData={{
+            doneBy: reportService.technician || "محسن امامی برسری",
+            report: reportService.report || "",
+            doneDate: reportService.actualDate || "1405/06/25",
+            inTime: "10:00",
+            outTime: "11:30",
+            wage: 0,
+            trip: 0,
+            discount: 0,
+            faultsList: [],
+            partsList:
+              reportService.partsRequested?.map((p, idx) => ({
+                code: `PRT-${idx + 101}`,
+                name: p,
+                unit: "عدد",
+                qty: 1,
+                price: 0,
+              })) || [],
+          }}
+          onBack={() => setReportService(null)}
+          onSubmit={(d) => {
+            appStore.updateScheduledService(reportService.id, {
+              status: "done",
+              report: d.report,
+              technician: d.doneBy,
+              actualDate: d.doneDate,
+              partsUsed: d.partsList.map((p) => p.name),
+            });
+            if (matchingContract) {
+              const cDetails = appStore.getContractDetails(matchingContract.id);
+              const mMatch = cDetails.months.find((m) => !m.done) || cDetails.months[0];
+              if (mMatch) {
+                appStore.addServiceSubmission(matchingContract.id, mMatch.id, d);
+              }
+            }
+            setReportService(null);
+            onShowToast?.("گزارش سرویس با موفقیت ثبت و ذخیره شد");
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -603,11 +676,28 @@ export default function ScheduleManagementPage({
 
                               <button
                                 type="button"
-                                onClick={(e) => handleOpenModal("report", service, e)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveMenuId(null);
+                                  setReportService(service);
+                                }}
                                 className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-zinc-700/70 text-right transition"
                               >
                                 <FileText size={13} className="text-emerald-400 shrink-0" />
                                 <span>ثبت گزارش</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveMenuId(null);
+                                  setBreakdownService(service);
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-zinc-700/70 text-right transition"
+                              >
+                                <AlertTriangle size={13} className="text-amber-400 shrink-0" />
+                                <span>ثبت خرابی</span>
                               </button>
 
                               <button
@@ -1410,6 +1500,34 @@ export default function ScheduleManagementPage({
           </div>
         </div>
       )}
+      {/* Unified Breakdown Registration Modal */}
+      <BreakdownModal
+        isOpen={!!breakdownService}
+        onClose={() => setBreakdownService(null)}
+        title={`ثبت خرابی - ${breakdownService?.buildingName || ""}`}
+        onSave={(data) => {
+          if (breakdownService) {
+            const contract = contracts.find(
+              (c) => c.no === breakdownService.contractNo || c.building === breakdownService.buildingName
+            );
+            const contractId = contract ? contract.id : 1;
+            appStore.addContractBreakdown(contractId, {
+              status: "در انتظار تایید",
+              declaredBy: breakdownService.customerName || "مدیر ساختمان",
+              declareDate: data.declareDate,
+              declareTime: data.declareTime,
+              executionStatus: "در انتظار اعزام کارشناس",
+              delayOrAdvance: "به موقع",
+              technicians: data.technicians,
+              partsAmount: 0,
+              report: data.reason,
+              description: data.description,
+            });
+            onShowToast?.(`خرابی برای «${breakdownService.buildingName}» با موفقیت ثبت گردید.`);
+            setBreakdownService(null);
+          }
+        }}
+      />
     </div>
   );
 }

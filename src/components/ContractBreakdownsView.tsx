@@ -20,6 +20,7 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import { Contract } from "../data";
+import BreakdownModal from "./BreakdownModal";
 import {
   BreakdownItem,
   BreakdownStatus,
@@ -739,271 +740,49 @@ export default function ContractBreakdownsView({
       </div>
 
       {/* 6. Register / Edit Breakdown Modal */}
-      {isModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 sm:p-5 backdrop-blur-sm animate-in fade-in duration-150"
-          onClick={() => setIsModalOpen(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className={`relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border shadow-2xl ${t.border} ${
-              t.dark ? "bg-[#1f1f1f]" : "bg-white"
-            }`}
-          >
-            {/* Modal Header */}
-            <div
-              className={`flex items-center justify-between border-b px-5 py-3.5 ${t.border} ${
-                t.dark ? "bg-[#252525]" : "bg-neutral-50"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-600 text-white shadow">
-                  <AlertCircle size={16} />
-                </div>
-                <span className={`text-[14px] font-bold ${t.text}`}>
-                  {editingItem ? "ویرایش اطلاعات خرابی" : "ثبت خرابی جدید"}
-                </span>
-                <span className="rounded bg-purple-500/15 px-2 py-0.5 text-[11px] font-mono text-purple-400">
-                  قرارداد: {fa(contract.no)} | {contract.building}
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="rounded-lg p-1 text-neutral-400 hover:text-white hover:bg-white/10 transition"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Modal Form Body */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Row 1: اعلام شده توسط & شماره تماس */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11.5px] font-medium text-neutral-300 mb-1">
-                    اعلام شده توسط <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formDeclaredBy}
-                    onChange={(e) => setFormDeclaredBy(e.target.value)}
-                    placeholder="مثال: آقای رضایی (مدیر ساختمان)"
-                    className="w-full rounded-lg border border-neutral-700 bg-[#292929] px-3 py-2 text-[12px] text-white focus:border-purple-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11.5px] font-medium text-neutral-300 mb-1">
-                    شماره تماس اعلام‌کننده
-                  </label>
-                  <input
-                    type="text"
-                    value={formPhone}
-                    onChange={(e) => setFormPhone(e.target.value)}
-                    placeholder="0912..."
-                    className="w-full rounded-lg border border-neutral-700 bg-[#292929] px-3 py-2 text-[12px] text-white font-mono focus:border-purple-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Row 2: وضعیت خرابی & وضعیت انجام */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11.5px] font-medium text-neutral-300 mb-1">
-                    وضعیت خرابی <span className="text-red-400">*</span>
-                  </label>
-                  <select
-                    value={formStatus}
-                    onChange={(e) => setFormStatus(e.target.value as BreakdownStatus)}
-                    className="w-full rounded-lg border border-neutral-700 bg-[#292929] px-3 py-2 text-[12px] text-white focus:border-purple-500 focus:outline-none"
-                  >
-                    <option value="در انتظار تایید">در انتظار تایید</option>
-                    <option value="انجام نشده">انجام نشده</option>
-                    <option value="انجام شده">انجام شده</option>
-                    <option value="دارای مغایرت">دارای مغایرت</option>
-                    <option value="باطل شده">باطل شده</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11.5px] font-medium text-neutral-300 mb-1">
-                    وضعیت انجام
-                  </label>
-                  <select
-                    value={formExecutionStatus}
-                    onChange={(e) => setFormExecutionStatus(e.target.value)}
-                    className="w-full rounded-lg border border-neutral-700 bg-[#292929] px-3 py-2 text-[12px] text-white focus:border-purple-500 focus:outline-none"
-                  >
-                    <option value="در انتظار اعزام کارشناس">در انتظار اعزام کارشناس</option>
-                    <option value="کارشناس در محل">کارشناس در محل</option>
-                    <option value="در حال رفع نقص">در حال رفع نقص</option>
-                    <option value="نیاز به قطعه یدکی">نیاز به قطعه یدکی</option>
-                    <option value="با موفقیت رفع شد">با موفقیت رفع شد</option>
-                    <option value="لغو شده توسط مشتری">لغو شده توسط مشتری</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Row 3: تاریخ و ساعت اعلام */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11.5px] font-medium text-neutral-300 mb-1">
-                    تاریخ اعلام خرابی
-                  </label>
-                  <input
-                    type="text"
-                    value={formDeclareDate}
-                    onChange={(e) => setFormDeclareDate(e.target.value)}
-                    placeholder="1405/06/15"
-                    className="w-full rounded-lg border border-neutral-700 bg-[#292929] px-3 py-2 text-[12px] text-white font-mono focus:border-purple-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11.5px] font-medium text-neutral-300 mb-1">
-                    ساعت اعلام
-                  </label>
-                  <input
-                    type="text"
-                    value={formDeclareTime}
-                    onChange={(e) => setFormDeclareTime(e.target.value)}
-                    placeholder="10:30"
-                    className="w-full rounded-lg border border-neutral-700 bg-[#292929] px-3 py-2 text-[12px] text-white font-mono focus:border-purple-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Row 4: سرویسکار مسئول & تاخیر یا تعجیل */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11.5px] font-medium text-neutral-300 mb-1">
-                    سرویسکار / کارشناس اعزامی
-                  </label>
-                  <select
-                    value={formTechs[0] || ""}
-                    onChange={(e) => setFormTechs([e.target.value])}
-                    className="w-full rounded-lg border border-neutral-700 bg-[#292929] px-3 py-2 text-[12px] text-white focus:border-purple-500 focus:outline-none"
-                  >
-                    <option value="محسن امامی برسری">محسن امامی برسری</option>
-                    <option value="مرتضی قاسمعلی">مرتضی قاسمعلی</option>
-                    <option value="محمد حسن رحیمی زاده">محمد حسن رحیمی زاده</option>
-                    <option value="بهمن کشاورز">بهمن کشاورز</option>
-                    <option value="میثم سهرابی">میثم سهرابی</option>
-                    <option value="مجتبی فرهمند">مجتبی فرهمند</option>
-                    {staffList.map((s) => (
-                      <option key={s.id} value={s.name}>
-                        {s.name} ({s.role})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11.5px] font-medium text-neutral-300 mb-1">
-                    تاخیر یا تعجیل
-                  </label>
-                  <select
-                    value={formDelayOrAdvance}
-                    onChange={(e) => setFormDelayOrAdvance(e.target.value)}
-                    className="w-full rounded-lg border border-neutral-700 bg-[#292929] px-3 py-2 text-[12px] text-white focus:border-purple-500 focus:outline-none"
-                  >
-                    <option value="به موقع">به موقع</option>
-                    <option value="۱ ساعت تاخیر">۱ ساعت تاخیر</option>
-                    <option value="۲ ساعت تاخیر">۲ ساعت تاخیر</option>
-                    <option value="بیش از ۲ ساعت تاخیر">بیش از ۲ ساعت تاخیر</option>
-                    <option value="تعجیل در حضور">تعجیل در حضور</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Row 5: تاریخ رفع خرابی & جمع مبلغ قطعه */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11.5px] font-medium text-neutral-300 mb-1">
-                    تاریخ رفع خرابی (در صورت اتمام)
-                  </label>
-                  <input
-                    type="text"
-                    value={formResolveDate}
-                    onChange={(e) => setFormResolveDate(e.target.value)}
-                    placeholder="1405/06/15"
-                    className="w-full rounded-lg border border-neutral-700 bg-[#292929] px-3 py-2 text-[12px] text-white font-mono focus:border-purple-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11.5px] font-medium text-neutral-300 mb-1">
-                    جمع مبلغ قطعه و لوازم (ریال)
-                  </label>
-                  <input
-                    type="text"
-                    value={formPartsAmount}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "");
-                      setFormPartsAmount(val ? Number(val).toLocaleString("en-US") : "");
-                    }}
-                    placeholder="۰"
-                    className="w-full rounded-lg border border-neutral-700 bg-[#292929] px-3 py-2 text-[12px] text-white font-mono focus:border-purple-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Row 6: گزارش کارشناس */}
-              <div>
-                <label className="block text-[11.5px] font-medium text-neutral-300 mb-1">
-                  شرح و گزارش رفع خرابی
-                </label>
-                <textarea
-                  rows={2}
-                  value={formReport}
-                  onChange={(e) => setFormReport(e.target.value)}
-                  placeholder="مثال: تعویض سنسور توقف طبقه سوم و تنظیم لنت ترمز کابین با موفقیت انجام شد."
-                  className="w-full rounded-lg border border-neutral-700 bg-[#292929] px-3 py-2 text-[12px] text-white focus:border-purple-500 focus:outline-none"
-                />
-              </div>
-
-              {/* Row 7: توضیحات تکمیلی */}
-              <div>
-                <label className="block text-[11.5px] font-medium text-neutral-300 mb-1">
-                  توضیحات و علت خرابی
-                </label>
-                <textarea
-                  rows={2}
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="مثال: نوسان برق ورودی ساختمان باعث قطع فیوز مدار ایمنی شده بود."
-                  className="w-full rounded-lg border border-neutral-700 bg-[#292929] px-3 py-2 text-[12px] text-white focus:border-purple-500 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div
-              className={`flex items-center justify-end gap-2.5 border-t px-5 py-3 ${t.border} ${
-                t.dark ? "bg-[#252525]" : "bg-neutral-50"
-              }`}
-            >
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="rounded-lg border border-neutral-700 px-4 py-1.5 text-[12px] text-neutral-300 hover:bg-neutral-800 transition"
-              >
-                انصراف
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveBreakdown}
-                className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-5 py-1.5 text-[12.5px] font-semibold text-white shadow transition hover:bg-purple-700 active:scale-95"
-              >
-                <Plus size={14} className="stroke-[2.5]" />
-                <span>{editingItem ? "ثبت تغییرات" : "ثبت خرابی"}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <BreakdownModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingItem ? "ویرایش اطلاعات خرابی" : "ثبت خرابی جدید"}
+        initialData={
+          editingItem
+            ? {
+                declareDate: editingItem.declareDate,
+                declareTime: editingItem.declareTime || "10:30",
+                reason: editingItem.report || "توقف بین طبقات",
+                description: editingItem.description || "",
+                technicians: editingItem.technicians,
+              }
+            : undefined
+        }
+        onSave={(data) => {
+          if (editingItem) {
+            appStore.updateContractBreakdown(contract.id, editingItem.id, {
+              declareDate: data.declareDate,
+              declareTime: data.declareTime,
+              report: data.reason,
+              description: data.description,
+              technicians: data.technicians,
+            });
+            onShowToast("خرابی با موفقیت ویرایش شد");
+          } else {
+            appStore.addContractBreakdown(contract.id, {
+              status: "در انتظار تایید",
+              declaredBy: contract.manager || "مدیر ساختمان",
+              declareDate: data.declareDate,
+              declareTime: data.declareTime,
+              executionStatus: "در انتظار اعزام کارشناس",
+              delayOrAdvance: "به موقع",
+              technicians: data.technicians,
+              partsAmount: 0,
+              report: data.reason,
+              description: data.description,
+            });
+            onShowToast("خرابی جدید با موفقیت ثبت گردید");
+          }
+          setIsModalOpen(false);
+        }}
+      />
     </div>
   );
 }

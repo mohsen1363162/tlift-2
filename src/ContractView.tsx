@@ -45,10 +45,12 @@ import {
 import type { Theme } from "./theme";
 import { Contract } from "./data";
 import ServiceForm from "./ServiceForm";
+import ContractRibbonBar from "./components/ContractRibbonBar";
 import ServiceReportView from "./components/ServiceReportView";
 import { ContractPaymentsView } from "./components/ContractPaymentsView";
 import ContractBreakdownsView from "./components/ContractBreakdownsView";
 import ContractServicesListView from "./components/ContractServicesListView";
+import BreakdownModal from "./components/BreakdownModal";
 import { Field, inputCls, SearchSelect, DatePicker } from "./ui";
 import { appStore, useContractDetails, MonthService, PaymentRecord, Invoice } from "./store";
 
@@ -93,6 +95,7 @@ export default function ContractView({
   const [quickPayRef, setQuickPayRef] = useState<string>("");
 
   const [serviceIdx, setServiceIdx] = useState<number | null>(null);
+  const [isBreakdownModalOpen, setIsBreakdownModalOpen] = useState(false);
 
   // Keep selectedMonthId valid
   useEffect(() => {
@@ -228,9 +231,14 @@ export default function ContractView({
       <ContractServicesListView
         t={t}
         contract={contract}
+        months={months}
         onBack={() => setSubView("overview")}
         onShowToast={notify}
-        onOpenServiceReport={(month) => setServiceReportModalMonth(month)}
+        onOpenServiceReport={(month) => {
+          const idx = months.findIndex((m) => m.id === month.id);
+          if (idx !== -1) setServiceIdx(idx);
+          else onOpenServiceReport?.(month, contract);
+        }}
       />
     );
   }
@@ -239,43 +247,43 @@ export default function ContractView({
     const s = months[serviceIdx];
     return (
       <div className="flex h-full flex-col">
-        <div className={`grid grid-cols-8 overflow-hidden border-b ${t.border}`}>
-          {stats.map(([k, v], i) => (
-            <div key={i} className={`border-s px-3 py-2 ${t.border} ${t.dark ? "bg-[#232323]" : "bg-neutral-50"}`}>
-              <div className={`mb-1 flex items-center justify-between gap-1 text-[11px] ${t.sub}`}>
-                <span className="truncate">{k}</span>
-                <Pin size={11} className="shrink-0" />
-              </div>
-              <div className={`truncate text-[12px] ${i === 0 ? "text-sky-400" : t.text}`}>{v}</div>
-            </div>
-          ))}
-        </div>
-        <div className="min-h-0 flex-1">
-          <ServiceForm
-            t={t}
-            planDate={`${s.y}/06/24`}
-            initialData={{
-              techs: s.techs,
-              doneBy: s.doneBy,
-              report: s.report,
-              reminder: s.reminder,
-              doneDate: s.date,
-              inTime: s.inTime,
-              outTime: s.outTime,
-              wage: s.wage,
-              trip: s.trip,
-              discount: s.discount,
-              faultsList: s.faultsList,
-              partsList: s.partsList,
-            }}
-            onBack={() => setServiceIdx(null)}
-            onSubmit={(d) => {
-              appStore.addServiceSubmission(contract.id, s.id, d);
-              setServiceIdx(null);
-              notify("گزارش سرویس با موفقیت ثبت و ذخیره شد");
-            }}
-          />
-        </div>
+        <ServiceForm
+          t={t}
+          planDate={`${s.y}/${String(s.id).padStart(2, "0")}/13`}
+          baseAmount={s.amount || 7000000}
+          contractRibbon={
+            <ContractRibbonBar
+              t={t}
+              contract={contract}
+              contractNo={contract.no}
+              totalPayable={totalPayable}
+              totalPaid={totalPaid}
+              debt={debt}
+              buildingDebt={debt}
+              customerDebt={debt}
+            />
+          }
+          initialData={{
+            techs: s.techs,
+            doneBy: s.doneBy || "محسن امامی برسری",
+            report: s.report,
+            reminder: s.reminder,
+            doneDate: s.date || "1405/06/25",
+            inTime: s.inTime || "10:00",
+            outTime: s.outTime || "11:30",
+            wage: s.wage,
+            trip: s.trip,
+            discount: s.discount,
+            faultsList: s.faultsList,
+            partsList: s.partsList,
+          }}
+          onBack={() => setServiceIdx(null)}
+          onSubmit={(d) => {
+            appStore.addServiceSubmission(contract.id, s.id, d);
+            setServiceIdx(null);
+            notify("گزارش سرویس با موفقیت ثبت و ذخیره شد");
+          }}
+        />
       </div>
     );
   }
@@ -481,6 +489,13 @@ export default function ContractView({
           ))}
           <button
             type="button"
+            onClick={() => setIsBreakdownModalOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-purple-500/60 bg-purple-500/10 px-3 py-1.5 text-[12px] text-purple-400 hover:bg-purple-500/20 transition active:scale-95"
+          >
+            <AlertTriangle size={13} /> ثبت خرابی
+          </button>
+          <button
+            type="button"
             onClick={() => notify("اعلام توقف")}
             className="flex items-center gap-1 rounded-lg border border-red-500/60 bg-red-500/10 px-3 py-1.5 text-[12px] text-red-400 hover:bg-red-500/20"
           >
@@ -507,9 +522,16 @@ export default function ContractView({
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => setSelectedMonthId(s.id)}
-                  onDoubleClick={() => setServiceReportModalMonth(s)}
-                  title="کلیک برای مشاهده خلاصه در پایین / دابل‌کلیک یا آیکون برای باز کردن پنجره سرویس"
+                  onClick={() => {
+                    setSelectedMonthId(s.id);
+                    const idx = months.findIndex((m) => m.id === s.id);
+                    if (idx !== -1) setServiceIdx(idx);
+                  }}
+                  onDoubleClick={() => {
+                    const idx = months.findIndex((m) => m.id === s.id);
+                    if (idx !== -1) setServiceIdx(idx);
+                  }}
+                  title="کلیک برای ثبت یا ویرایش گزارش سرویس این ماه"
                   className={`relative flex h-[82px] cursor-pointer flex-col items-center justify-between p-2 transition ${
                     s.done
                       ? isSelected
@@ -533,9 +555,10 @@ export default function ContractView({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setServiceReportModalMonth(s);
+                        const idx = months.findIndex((m) => m.id === s.id);
+                        if (idx !== -1) setServiceIdx(idx);
                       }}
-                      title="مشاهده اطلاعات و چک‌لیست در پنجره سرویس"
+                      title="ثبت / ویرایش گزارش سرویس"
                       className="rounded p-0.5 text-neutral-400 hover:text-white hover:bg-white/10"
                     >
                       <FileText size={12} />
@@ -690,12 +713,15 @@ export default function ContractView({
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setServiceReportModalMonth(selectedMonthObj)}
+                  onClick={() => {
+                    const idx = months.findIndex((m) => m.id === selectedMonthObj.id);
+                    if (idx !== -1) setServiceIdx(idx);
+                  }}
                   className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-3.5 py-1.5 text-[12px] font-semibold text-white shadow-sm transition hover:bg-purple-700 active:scale-95"
-                  title="باز کردن پنجره اطلاعات سرویس، جدول مشخصات و چک‌لیست کامل"
+                  title="مشاهده و ثبت گزارش سرویس"
                 >
                   <FileText size={13} />
-                  مشاهده برگه سرویس (پنجره گزارش)
+                  مشاهده و ثبت گزارش سرویس
                 </button>
 
                 <button
@@ -1196,7 +1222,7 @@ export default function ContractView({
         </table>
       </div>
 
-      {/* Service Report Popup Modal Window ("پنجره سرویس و چک‌لیست") */}
+      {/* Service Report Modal Window */}
       {serviceReportModalMonth && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-2 sm:p-5 backdrop-blur-sm animate-in fade-in duration-150"
@@ -1208,64 +1234,69 @@ export default function ContractView({
               t.dark ? "bg-[#161616]" : "bg-neutral-50"
             }`}
           >
-            {/* Top Bar */}
-            <div
-              className={`flex items-center justify-between border-b px-4 py-2.5 ${t.border} ${
-                t.dark ? "bg-[#202020]" : "bg-white"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-600 text-white shadow">
-                  <ShieldCheck size={16} />
-                </div>
-                <span className={`text-[13.5px] font-bold ${t.text}`}>
-                  پنجره اطلاعات و چک‌لیست سرویس — ماه {serviceReportModalMonth.m} {fa(serviceReportModalMonth.y)}
-                </span>
-                <span className="rounded bg-purple-500/15 px-2 py-0.5 text-[11px] font-mono text-purple-400">
-                  قرارداد: {fa(contract.number)} | {contract.building}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {onOpenServiceReport && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const m = serviceReportModalMonth;
-                      setServiceReportModalMonth(null);
-                      onOpenServiceReport(m, contract);
-                    }}
-                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-1 text-[11.5px] ${t.border} ${t.hover} ${t.text}`}
-                    title="باز کردن این گزارش در یک تب مجزا"
-                  >
-                    <Files size={13} />
-                    <span>باز کردن در تب جداگانه</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setServiceReportModalMonth(null)}
-                  className="flex items-center gap-1.5 rounded-lg bg-rose-500/20 px-3.5 py-1 text-[12px] font-semibold text-rose-300 hover:bg-rose-500/30 transition active:scale-95"
-                >
-                  <X size={15} />
-                  <span>بستن پنجره</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Body: The full ServiceReportView */}
-            <div className="flex-1 overflow-y-auto">
-              <ServiceReportView
-                t={t}
-                contract={contract}
-                monthService={serviceReportModalMonth}
-                onShowToast={notify}
-                onClose={() => setServiceReportModalMonth(null)}
-              />
-            </div>
+            <ServiceForm
+              t={t}
+              planDate={`${serviceReportModalMonth.y}/${String(serviceReportModalMonth.id).padStart(2, "0")}/13`}
+              baseAmount={serviceReportModalMonth.amount || 7000000}
+              contractRibbon={
+                <ContractRibbonBar
+                  t={t}
+                  contract={contract}
+                  contractNo={contract.no}
+                  totalPayable={totalPayable}
+                  totalPaid={totalPaid}
+                  debt={debt}
+                  buildingDebt={debt}
+                  customerDebt={debt}
+                />
+              }
+              initialData={{
+                techs: serviceReportModalMonth.techs,
+                doneBy: serviceReportModalMonth.doneBy || "محسن امامی برسری",
+                report: serviceReportModalMonth.report,
+                reminder: serviceReportModalMonth.reminder,
+                doneDate: serviceReportModalMonth.date || "1405/06/25",
+                inTime: serviceReportModalMonth.inTime || "10:00",
+                outTime: serviceReportModalMonth.outTime || "11:30",
+                wage: serviceReportModalMonth.wage,
+                trip: serviceReportModalMonth.trip,
+                discount: serviceReportModalMonth.discount,
+                faultsList: serviceReportModalMonth.faultsList,
+                partsList: serviceReportModalMonth.partsList,
+              }}
+              onBack={() => setServiceReportModalMonth(null)}
+              onSubmit={(d) => {
+                appStore.addServiceSubmission(contract.id, serviceReportModalMonth.id, d);
+                setServiceReportModalMonth(null);
+                notify("گزارش سرویس با موفقیت ثبت و ذخیره شد");
+              }}
+            />
           </div>
         </div>
       )}
+
+      {/* Unified Breakdown Modal */}
+      <BreakdownModal
+        isOpen={isBreakdownModalOpen}
+        onClose={() => setIsBreakdownModalOpen(false)}
+        title="ثبت خرابی جدید"
+        onSave={(data) => {
+          appStore.addContractBreakdown(contract.id, {
+            status: "در انتظار تایید",
+            declaredBy: contract.manager || "مدیر ساختمان",
+            declareDate: data.declareDate,
+            declareTime: data.declareTime,
+            executionStatus: "در انتظار اعزام کارشناس",
+            delayOrAdvance: "به موقع",
+            technicians: data.technicians,
+            partsAmount: 0,
+            report: data.reason,
+            description: data.description,
+          });
+          notify("خرابی جدید با موفقیت ثبت گردید");
+          setIsBreakdownModalOpen(false);
+        }}
+      />
 
       {toast && (
         <div className="fixed bottom-16 left-1/2 z-50 -translate-x-1/2 rounded bg-neutral-800 px-4 py-2 text-[12.5px] text-white shadow-lg">

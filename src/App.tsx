@@ -657,9 +657,6 @@ export default function App() {
             </span>
           </div>
           <div className="flex items-center gap-5">
-            <span className="rounded bg-pink-300 px-2 py-0.5 text-[11px] font-medium text-neutral-900">
-              ⊙ جهت نصب نسخه جدید نرم افزار کلیک کنید.
-            </span>
             <span className="flex items-center gap-1">
               <GitBranch size={13} /> نسخه 1.1.22
             </span>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   ChevronDown,
   ChevronsUpDown,
@@ -13,6 +13,8 @@ import {
   Sheet,
   Wrench,
   AlertTriangle,
+  Pin,
+  PinOff,
 } from "lucide-react";
 import type { Theme } from "./theme";
 import { Contract } from "./data";
@@ -76,6 +78,33 @@ export default function ContractsPage({
     setTimeout(() => setToast(null), 2500);
   };
 
+  // ---- Pinned contracts (persisted in localStorage) ----
+  const PIN_KEY = "tlift_pinned_contracts_v1";
+  const [pinned, setPinned] = useState<number[]>(() => {
+    try {
+      const raw = localStorage.getItem(PIN_KEY);
+      return raw ? (JSON.parse(raw) as number[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [onlyPinned, setOnlyPinned] = useState(false);
+  useEffect(() => {
+    try {
+      localStorage.setItem(PIN_KEY, JSON.stringify(pinned));
+    } catch {
+      /* ignore */
+    }
+  }, [pinned]);
+  const isPinned = (id: number) => pinned.includes(id);
+  const togglePin = (c: Contract) => {
+    setPinned((prev) => {
+      const on = prev.includes(c.id);
+      notify(on ? `پین قرارداد ${c.no} برداشته شد` : `قرارداد ${c.no} در بالای جدول پین شد`);
+      return on ? prev.filter((x) => x !== c.id) : [c.id, ...prev];
+    });
+  };
+
   const handleToggleColumn = (key: string) => {
     setColumns((prev) =>
       prev.map((c) => (c.key === key ? { ...c, visible: !c.visible } : c))
@@ -83,7 +112,8 @@ export default function ContractsPage({
   };
 
   const filteredList = useMemo(() => {
-    return contracts.filter((c) => {
+    const list = contracts.filter((c) => {
+      if (onlyPinned && !pinned.includes(c.id)) return false;
       // 1. Text search
       if (q.trim()) {
         const query = q.toLowerCase();
@@ -113,7 +143,13 @@ export default function ContractsPage({
 
       return true;
     });
-  }, [contracts, q, filters]);
+    // pinned contracts float to the top (keeping pin order)
+    const rank = (c: Contract) => {
+      const i = pinned.indexOf(c.id);
+      return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+    };
+    return [...list].sort((a, b) => rank(a) - rank(b));
+  }, [contracts, q, filters, pinned, onlyPinned]);
 
   const effectivePageSize = pageSize === -1 ? (filteredList.length || 1) : pageSize;
   const totalPages = Math.ceil(filteredList.length / effectivePageSize) || 1;
@@ -182,6 +218,24 @@ export default function ContractsPage({
         hasActiveFilters={hasActiveFilters}
         t={t}
       >
+        <button
+          type="button"
+          onClick={() => {
+            setOnlyPinned((v) => !v);
+            setPage(1);
+          }}
+          title="نمایش فقط قراردادهای پین‌شده"
+          className={`flex items-center gap-1 rounded border px-3 py-1.5 text-[12.5px] transition ${
+            onlyPinned
+              ? "border-amber-400 bg-amber-500/20 text-amber-300"
+              : `${t.border} ${t.hover} ${t.text}`
+          }`}
+        >
+          <Pin size={14} className={onlyPinned ? "text-amber-300" : "text-amber-400"} />
+          پین‌شده‌ها
+          <span className="rounded bg-amber-600 px-1.5 text-[11px] text-white">{pinned.length}</span>
+        </button>
+
         <div className="flex-1" />
 
         {onOpenCsvUpload && (
@@ -240,6 +294,9 @@ export default function ContractsPage({
         <table className="w-full min-w-[1100px] text-[12.5px]">
           <thead className={`${t.head} ${t.sub}`}>
             <tr>
+              <th className="w-8 px-2 py-2.5 text-center font-normal" title="پین">
+                <Pin size={12} className="mx-auto opacity-60" />
+              </th>
               <th className="w-12 whitespace-nowrap px-3 py-2.5 text-right font-normal">ردیف</th>
               {columns
                 .filter((c) => c.visible)
@@ -259,8 +316,25 @@ export default function ContractsPage({
               <tr
                 key={c.id}
                 onClick={() => onOpenContract?.(c)}
-                className={`cursor-pointer border-b ${t.border} ${t.row}`}
+                className={`cursor-pointer border-b ${t.border} ${t.row} ${
+                  isPinned(c.id) ? "border-r-2 border-r-amber-400 bg-amber-500/5" : ""
+                }`}
               >
+                <td className="px-2 py-3 text-center">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      togglePin(c);
+                    }}
+                    title={isPinned(c.id) ? "برداشتن پین" : "پین کردن در بالای جدول"}
+                    className={`rounded p-1 transition ${t.hover} ${
+                      isPinned(c.id) ? "text-amber-400" : `${t.sub} opacity-40 hover:opacity-100`
+                    }`}
+                  >
+                    <Pin size={14} className={isPinned(c.id) ? "fill-amber-400" : ""} />
+                  </button>
+                </td>
                 <td className="px-3 py-3">{(page - 1) * (pageSize === -1 ? 0 : pageSize) + i + 1}</td>
                 {columns
                   .filter((col) => col.visible)
@@ -409,7 +483,7 @@ export default function ContractsPage({
             {paginatedList.length === 0 && (
               <tr>
                 <td
-                  colSpan={columns.filter((c) => c.visible).length + 2}
+                  colSpan={columns.filter((c) => c.visible).length + 3}
                   className={`py-12 text-center ${t.sub}`}
                 >
                   هیچ موردی پیدا نشد
@@ -471,6 +545,12 @@ export default function ContractsPage({
           const c = contracts.find((x) => x.id === rowMenu.id)!;
           const items = [
             { label: "مشاهده ی قرارداد", icon: Eye, ext: true, run: () => onOpenContract?.(c) },
+            {
+              label: isPinned(c.id) ? "برداشتن پین قرارداد" : "پین کردن در بالای جدول",
+              icon: isPinned(c.id) ? PinOff : Pin,
+              ext: false,
+              run: () => togglePin(c),
+            },
             { label: "پرینت قرارداد", icon: Printer, ext: false, run: () => notify("پرینت قرارداد") },
             { label: "تمدید قرارداد", icon: RefreshCcw, ext: false, run: () => notify("تمدید قرارداد") },
             {

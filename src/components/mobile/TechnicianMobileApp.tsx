@@ -48,6 +48,8 @@ import {
   ServicePartItem,
 } from "../../store";
 import { useParts } from "../../partsStore";
+import { syncNow } from "../../cloudSync";
+import { useSyncState } from "../SyncIndicator";
 
 /* -------------------------------------------------------------------------- */
 /*                                   helpers                                  */
@@ -96,6 +98,7 @@ export default function TechnicianMobileApp({
   const checklist = useChecklist();
   const categories = useChecklistCategories();
   const parts = useParts();
+  const sync = useSyncState();
 
   const [screen, setScreen] = useState<Screen>("home");
   const [drawer, setDrawer] = useState(false);
@@ -974,7 +977,12 @@ export default function TechnicianMobileApp({
           </div>
           {[
             [FileBarChart2, "گزارشات", () => { setDrawer(false); setScreen("services"); }],
-            [RefreshCw, "همگام‌سازی اطلاعات", () => { setDrawer(false); notify("اطلاعات همگام‌سازی شد"); }],
+            [RefreshCw, sync.status === "online" ? "همگام‌سازی اطلاعات (متصل)" : "همگام‌سازی اطلاعات (آفلاین)", async () => {
+              setDrawer(false);
+              notify("در حال همگام‌سازی...");
+              const ok = await syncNow();
+              notify(ok ? "اطلاعات با سرور همگام شد" : "اتصال به سرور برقرار نشد؛ داده‌ها محلی ذخیره شدند");
+            }],
             [Monitor, "بازگشت به نسخه دسکتاپ", () => { setDrawer(false); onExitToDesktop(); }],
             [LogOut, "خروج", onSignOut],
           ].map(([I, l, run]: any) => (

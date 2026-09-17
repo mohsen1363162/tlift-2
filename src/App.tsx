@@ -52,6 +52,7 @@ import ServiceForm from "./ServiceForm";
 import ContractRibbonBar from "./components/ContractRibbonBar";
 import WelcomeBanner from "./components/WelcomeBanner";
 import TechnicianMobileApp from "./components/mobile/TechnicianMobileApp";
+import SyncIndicator from "./components/SyncIndicator";
 import { useContracts, useMarketingItems, appStore, MonthService } from "./store";
 import { useAuth } from "./contexts/AuthContext";
 import { CustomerAuthData } from "./utils/customerAuth";
@@ -684,6 +685,7 @@ export default function App() {
             >
               <LogOut size={13} /> خروج
             </button>
+            <SyncIndicator />
             <span className="flex items-center gap-1">
               <Headphones size={13} /> پشتیبانی
             </span>

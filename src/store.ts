@@ -52,6 +52,7 @@ export type MonthService = {
   buildingName?: string;
   checklistResults?: Record<number, ServiceChecklistStatus>;
   attachments?: string[];
+  delayOrAdvance?: string;
 };
 
 export type PaymentRecord = {
@@ -228,6 +229,9 @@ export type ScheduledService = {
   time?: string;
   notes?: string;
   partsRequested?: Array<{ id: string; name: string; qty: number; reason: string; date: string }>;
+  scheduledDate?: string;
+  actualDate?: string;
+  partsUsed?: string[];
   report?: string;
   lastUpdated?: number;
 };
@@ -660,6 +664,7 @@ if (!isCsvSeeded) {
           name: custName,
           buildings: 1,
           active: !row.isCanceled,
+          sms: true,
           suspended: false,
           phone: row.phone || row.coordinatorPhone,
         });
@@ -873,6 +878,7 @@ export const appStore = {
           name: custName,
           buildings: 1,
           active: !row.isCanceled,
+          sms: true,
           suspended: false,
           phone: row.phone || row.coordinatorPhone,
         });
@@ -1368,6 +1374,13 @@ export const appStore = {
             lastUpdated: Date.now(),
           }
         : s
+    );
+    saveStorage("tlift_scheduled_services", scheduledServices);
+    notifyListeners();
+  },
+  updateScheduledService: (id: string, patch: Partial<ScheduledService>) => {
+    scheduledServices = scheduledServices.map((s) =>
+      s.id === id ? { ...s, ...patch, lastUpdated: Date.now() } : s
     );
     saveStorage("tlift_scheduled_services", scheduledServices);
     notifyListeners();

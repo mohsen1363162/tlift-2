@@ -164,9 +164,14 @@ export default function BreakdownModal({
                 {showDatePicker && (
                   <div className="absolute top-full right-0 z-50 mt-1">
                     <ShamsiDatePicker
-                      value={declareDate}
+                      value={(() => {
+                        const [jy, jm, jd] = declareDate.split("/").map(Number);
+                        return { jy: jy || 1405, jm: jm || 1, jd: jd || 1 };
+                      })()}
                       onChange={(d) => {
-                        setDeclareDate(d);
+                        setDeclareDate(
+                          `${d.jy}/${String(d.jm).padStart(2, "0")}/${String(d.jd).padStart(2, "0")}`
+                        );
                         setShowDatePicker(false);
                       }}
                       onClose={() => setShowDatePicker(false)}

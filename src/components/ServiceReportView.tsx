@@ -30,8 +30,8 @@ import {
   Upload,
 } from "lucide-react";
 import { Theme } from "../theme";
+import type { Contract } from "../data";
 import {
-  Contract,
   MonthService,
   ServiceChecklistStatus,
   useChecklist,

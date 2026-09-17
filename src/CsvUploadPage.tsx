@@ -22,7 +22,7 @@ import {
   Check,
   X,
 } from "lucide-react";
-import { Theme } from "./data";
+import type { Theme } from "./theme";
 import { appStore, useContracts, useCustomers } from "./store";
 import {
   parseContractsCsv,

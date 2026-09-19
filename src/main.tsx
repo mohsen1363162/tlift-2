@@ -6,6 +6,10 @@ import LoginPage from './pages/LoginPage';
 import BrandLogo from './components/BrandLogo';
 import { Toaster } from './components/ui/toaster';
 import './index.css';
+import { startCloudSync } from './cloudSync';
+
+// شروع همگام‌سازی ابری (Supabase) — در صورت قطع بودن اینترنت، آفلاین ادامه می‌دهد
+startCloudSync();
 
 /** صفحه بارگذاری — هنگام بررسی session */
 const LoadingScreen: React.FC = () => (

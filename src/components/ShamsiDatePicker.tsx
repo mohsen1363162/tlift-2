@@ -19,6 +19,7 @@ interface ShamsiDatePickerProps {
   value: { jy: number; jm: number; jd: number };
   onChange: (date: { jy: number; jm: number; jd: number }) => void;
   label?: string;
+  onClose?: () => void;
 }
 
 const ShamsiDatePicker: React.FC<ShamsiDatePickerProps> = ({

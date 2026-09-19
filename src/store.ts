@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { pushKey, registerApplier } from "./cloudSync";
 import { Contract, Customer, Staff, initialContracts, initialCustomers, initialStaff } from "./data";
 import {
   RAW_CSV_DATA,
@@ -52,6 +53,7 @@ export type MonthService = {
   buildingName?: string;
   checklistResults?: Record<number, ServiceChecklistStatus>;
   attachments?: string[];
+  delayOrAdvance?: string;
 };
 
 export type PaymentRecord = {
@@ -197,6 +199,8 @@ function saveStorage<T>(key: string, data: T) {
   } catch (e) {
     console.warn(`Error saving to localStorage for ${key}`, e);
   }
+  // آینه‌سازی در Supabase (پرچم‌های seed همگام نمی‌شوند)
+  if (!key.includes("seeded")) pushKey(key, data);
 }
 
 // In-Memory Global State
@@ -228,6 +232,9 @@ export type ScheduledService = {
   time?: string;
   notes?: string;
   partsRequested?: Array<{ id: string; name: string; qty: number; reason: string; date: string }>;
+  scheduledDate?: string;
+  actualDate?: string;
+  partsUsed?: string[];
   report?: string;
   lastUpdated?: number;
 };
@@ -660,6 +667,7 @@ if (!isCsvSeeded) {
           name: custName,
           buildings: 1,
           active: !row.isCanceled,
+          sms: true,
           suspended: false,
           phone: row.phone || row.coordinatorPhone,
         });
@@ -742,6 +750,51 @@ const notifyListeners = () => {
     }
   });
 };
+
+// اعمال داده‌های دریافتی از سرور (Supabase) روی state محلی
+registerApplier((key, data) => {
+  if (data === null || data === undefined) return;
+  switch (key) {
+    case "tlift_contracts":
+      contracts = data as Contract[];
+      break;
+    case "tlift_customers":
+      customers = data as Customer[];
+      break;
+    case "tlift_staff":
+      staff = data as Staff[];
+      break;
+    case "tlift_marketing_items":
+      marketingItems = data as MarketingItem[];
+      break;
+    case "tlift_scheduled_services":
+      scheduledServices = data as ScheduledService[];
+      break;
+    case "tlift_zones_v2":
+      zones = data as ZoneItem[];
+      break;
+    case "tlift_checklist_v1":
+      checklistItems = data as ChecklistItem[];
+      break;
+    case "tlift_checklist_categories_v1":
+      checklistCategories = data as string[];
+      break;
+    case "tlift_contract_details": {
+      const incoming = data as Record<number, ContractDetails>;
+      Object.keys(contractDetailsMap).forEach((k) => delete contractDetailsMap[Number(k)]);
+      Object.assign(contractDetailsMap, incoming);
+      break;
+    }
+    default:
+      return;
+  }
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {
+    /* ignore */
+  }
+  notifyListeners();
+});
 
 // Store API
 export const appStore = {
@@ -873,6 +926,7 @@ export const appStore = {
           name: custName,
           buildings: 1,
           active: !row.isCanceled,
+          sms: true,
           suspended: false,
           phone: row.phone || row.coordinatorPhone,
         });
@@ -1368,6 +1422,13 @@ export const appStore = {
             lastUpdated: Date.now(),
           }
         : s
+    );
+    saveStorage("tlift_scheduled_services", scheduledServices);
+    notifyListeners();
+  },
+  updateScheduledService: (id: string, patch: Partial<ScheduledService>) => {
+    scheduledServices = scheduledServices.map((s) =>
+      s.id === id ? { ...s, ...patch, lastUpdated: Date.now() } : s
     );
     saveStorage("tlift_scheduled_services", scheduledServices);
     notifyListeners();

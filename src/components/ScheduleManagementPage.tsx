@@ -346,9 +346,9 @@ export default function ScheduleManagementPage({
             partsList:
               reportService.partsRequested?.map((p, idx) => ({
                 code: `PRT-${idx + 101}`,
-                name: p,
+                name: p.name,
                 unit: "عدد",
-                qty: 1,
+                qty: p.qty || 1,
                 price: 0,
               })) || [],
           }}

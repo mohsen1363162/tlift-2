@@ -21,7 +21,7 @@ const fa = (n: string | number) => String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵
 const money = (n: number) => fa(n.toLocaleString("en-US")) + " ریال";
 
 export type Fault = { by: string; date: string; reason: string };
-export type Part = { code: string; name: string; unit: string; qty: number; price: number };
+export type Part = { code?: string; name: string; unit: string; qty: number; price: number };
 
 export default function ServiceForm({
   t,

@@ -20,6 +20,7 @@ import {
   Star,
   CheckCircle2,
   LogOut,
+  Smartphone,
 } from "lucide-react";
 import {
   navItems,
@@ -50,6 +51,8 @@ import ServiceReportView from "./components/ServiceReportView";
 import ServiceForm from "./ServiceForm";
 import ContractRibbonBar from "./components/ContractRibbonBar";
 import WelcomeBanner from "./components/WelcomeBanner";
+import TechnicianMobileApp from "./components/mobile/TechnicianMobileApp";
+import SyncIndicator from "./components/SyncIndicator";
 import { useContracts, useMarketingItems, appStore, MonthService } from "./store";
 import { useAuth } from "./contexts/AuthContext";
 import { CustomerAuthData } from "./utils/customerAuth";
@@ -103,6 +106,16 @@ export default function App() {
     }
   }, [currentUserInfo]);
   const [dark, setDark] = useState(true);
+  const [mobileMode, setMobileMode] = useState<boolean>(() => {
+    if (localStorage.getItem("tlift_mobile_mode") === "1") return true;
+    return typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches;
+  });
+  useEffect(() => {
+    localStorage.setItem("tlift_mobile_mode", mobileMode ? "1" : "0");
+  }, [mobileMode]);
+  useEffect(() => {
+    if (currentUserInfo?.role === "technician" || currentUserInfo?.role === "staff") setMobileMode(true);
+  }, [currentUserInfo?.role]);
   const [query, setQuery] = useState("");
   const [tabs, setTabs] = useState<Tab[]>([{ id: 1, title: "تب جدید", kind: "home" }]);
   const [active, setActive] = useState(1);
@@ -249,6 +262,20 @@ export default function App() {
 
   const current = tabs.find((x) => x.id === active);
 
+  if (mobileMode) {
+    return (
+      <TechnicianMobileApp
+        technician={{
+          name: currentUserInfo?.name || "محسن امامی برسری",
+          phone: currentUserInfo?.phone || "09192868509",
+          company: "شرکت آسمان‌سرا",
+        }}
+        onExitToDesktop={() => setMobileMode(false)}
+        onSignOut={() => signOut()}
+      />
+    );
+  }
+
   return (
     <div
       dir="rtl"
@@ -311,6 +338,15 @@ export default function App() {
               <LayoutGrid size={15} />
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setMobileMode(true)}
+            title="اپلیکیشن موبایل تکنسین"
+            className="flex items-center gap-1 rounded bg-blue-600 px-2.5 py-1 text-[11.5px] font-medium text-white hover:bg-blue-700"
+          >
+            <Smartphone size={13} /> اپلیکیشن موبایل تکنسین
+          </button>
 
           <button
             type="button"
@@ -649,6 +685,7 @@ export default function App() {
             >
               <LogOut size={13} /> خروج
             </button>
+            <SyncIndicator />
             <span className="flex items-center gap-1">
               <Headphones size={13} /> پشتیبانی
             </span>
@@ -657,9 +694,6 @@ export default function App() {
             </span>
           </div>
           <div className="flex items-center gap-5">
-            <span className="rounded bg-pink-300 px-2 py-0.5 text-[11px] font-medium text-neutral-900">
-              ⊙ جهت نصب نسخه جدید نرم افزار کلیک کنید.
-            </span>
             <span className="flex items-center gap-1">
               <GitBranch size={13} /> نسخه 1.1.22
             </span>

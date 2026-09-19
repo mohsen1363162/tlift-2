@@ -6,7 +6,7 @@ const fa = (n: string | number) => String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵
 const money = (n: number) => fa(n.toLocaleString("en-US")) + " ریال";
 
 export interface ServicePartData {
-  code: string;
+  code?: string;
   name: string;
   unit: string;
   qty: number;

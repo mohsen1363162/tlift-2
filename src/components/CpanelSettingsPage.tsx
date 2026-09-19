@@ -85,7 +85,7 @@ export default function CpanelSettingsPage({
   };
 
   return (
-    <div className={`flex flex-1 flex-col overflow-y-auto p-6 text-right ${t.bg}`}>
+    <div className={`flex flex-1 flex-col overflow-y-auto p-6 text-right ${t.input}`}>
       {/* Header */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b pb-4">
         <div>

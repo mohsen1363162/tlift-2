@@ -46,6 +46,7 @@ interface ThemeProps {
 interface ContractServicesListViewProps {
   t: ThemeProps;
   contract: Contract;
+  months?: MonthService[];
   onBack: () => void;
   onShowToast: (msg: string) => void;
   onOpenServiceReport: (month: MonthService) => void;
@@ -1182,8 +1183,8 @@ export default function ContractServicesListView({
                     <option value="بهمن کشاورز">بهمن کشاورز</option>
                     <option value="محمد حسن رحیمی زاده">محمد حسن رحیمی زاده</option>
                     {staffList.map((s) => (
-                      <option key={s.id} value={s.name}>
-                        {s.name}
+                      <option key={s.id} value={`${s.first} ${s.last}`}>
+                        {s.first} {s.last}
                       </option>
                     ))}
                   </select>

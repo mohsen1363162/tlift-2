@@ -286,6 +286,7 @@ export type Contract = {
   locationStatus?: string;
   isCanceled?: boolean;
   cancelDate?: string;
+  customer?: string;
 };
 
 export const initialContracts: Contract[] = [

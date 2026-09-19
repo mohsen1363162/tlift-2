@@ -16,6 +16,7 @@ export function makeTheme(dark: boolean) {
         input: "bg-[#1c1c1c] border-neutral-700 text-neutral-200",
         row: "hover:bg-white/[0.06]",
         head: "bg-[#2f2f2f]",
+        bg: "bg-[#1c1c1c]",
       }
     : {
         dark: false,
@@ -31,5 +32,6 @@ export function makeTheme(dark: boolean) {
         input: "bg-white border-neutral-300 text-neutral-800",
         row: "hover:bg-black/[0.04]",
         head: "bg-neutral-100",
+        bg: "bg-white",
       };
 }
